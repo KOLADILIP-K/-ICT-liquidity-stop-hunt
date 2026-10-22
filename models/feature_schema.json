@@ -1,0 +1,25 @@
+{
+  "features": [
+    "instrument_code",
+    "pattern_type_code",
+    "equality_score",
+    "pattern_height_atr",
+    "touch_count",
+    "zone_width_atr",
+    "bar_separation",
+    "slope_atr",
+    "line_age",
+    "sweep_depth_atr",
+    "relative_volume_sweep",
+    "candle_lower_wick_ratio",
+    "candle_body_ratio",
+    "candle_close_location",
+    "dist_to_pdl_atr",
+    "dist_to_pdh_atr",
+    "confluence_score",
+    "session_code",
+    "rolling_volatility",
+    "return_5",
+    "return_20"
+  ]
+}

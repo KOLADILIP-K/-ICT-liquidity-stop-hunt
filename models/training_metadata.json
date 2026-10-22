@@ -1,0 +1,205 @@
+{
+  "model_version": "v1.0.0",
+  "model_type": "XGBoost_Shared",
+  "engine": "xgboost",
+  "features": [
+    "instrument_code",
+    "pattern_type_code",
+    "equality_score",
+    "pattern_height_atr",
+    "touch_count",
+    "zone_width_atr",
+    "bar_separation",
+    "slope_atr",
+    "line_age",
+    "sweep_depth_atr",
+    "relative_volume_sweep",
+    "candle_lower_wick_ratio",
+    "candle_body_ratio",
+    "candle_close_location",
+    "dist_to_pdl_atr",
+    "dist_to_pdh_atr",
+    "confluence_score",
+    "session_code",
+    "rolling_volatility",
+    "return_5",
+    "return_20"
+  ],
+  "train_samples": 2312,
+  "val_samples": 755,
+  "test_samples": 755,
+  "scale_pos_weight": 1.9415,
+  "baseline_metrics": {
+    "n_samples": 755,
+    "n_positives": 202,
+    "n_negatives": 553,
+    "positive_rate": 0.2675,
+    "threshold": 0.5,
+    "accuracy": 0.5338,
+    "precision": 0.3256,
+    "recall": 0.6931,
+    "f1": 0.443,
+    "roc_auc": 0.5846,
+    "pr_auc": 0.3101,
+    "brier_score": 0.2584,
+    "confusion_matrix": [
+      [
+        263,
+        290
+      ],
+      [
+        62,
+        140
+      ]
+    ],
+    "calibration": {
+      "prob_true": [
+        0.2,
+        0.1471,
+        0.2727,
+        0.3578,
+        0.0
+      ],
+      "prob_pred": [
+        0.1416,
+        0.3189,
+        0.5095,
+        0.667,
+        0.8221
+      ]
+    }
+  },
+  "test_metrics": {
+    "Combined": {
+      "n_samples": 755,
+      "n_positives": 202,
+      "n_negatives": 553,
+      "positive_rate": 0.2675,
+      "threshold": 0.5,
+      "accuracy": 0.7325,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "roc_auc": 0.6412,
+      "pr_auc": 0.3527,
+      "brier_score": 0.1877,
+      "confusion_matrix": [
+        [
+          553,
+          0
+        ],
+        [
+          202,
+          0
+        ]
+      ],
+      "calibration": {
+        "prob_true": [
+          0.129,
+          0.2935,
+          0.3111
+        ],
+        "prob_pred": [
+          0.1693,
+          0.2974,
+          0.4182
+        ]
+      }
+    },
+    "XAUUSD": {
+      "n_samples": 310,
+      "n_positives": 58,
+      "n_negatives": 252,
+      "positive_rate": 0.1871,
+      "threshold": 0.5,
+      "accuracy": 0.8129,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "roc_auc": 0.6227,
+      "pr_auc": 0.269,
+      "brier_score": 0.156,
+      "confusion_matrix": [
+        [
+          252,
+          0
+        ],
+        [
+          58,
+          0
+        ]
+      ],
+      "calibration": {
+        "prob_true": [
+          0.1186,
+          0.1853,
+          0.4211
+        ],
+        "prob_pred": [
+          0.1683,
+          0.29,
+          0.4256
+        ]
+      }
+    },
+    "XAGUSD": {
+      "n_samples": 445,
+      "n_positives": 144,
+      "n_negatives": 301,
+      "positive_rate": 0.3236,
+      "threshold": 0.5,
+      "accuracy": 0.6764,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "roc_auc": 0.6422,
+      "pr_auc": 0.4198,
+      "brier_score": 0.2098,
+      "confusion_matrix": [
+        [
+          301,
+          0
+        ],
+        [
+          144,
+          0
+        ]
+      ],
+      "calibration": {
+        "prob_true": [
+          0.1385,
+          0.3644,
+          0.2308
+        ],
+        "prob_pred": [
+          0.1702,
+          0.3022,
+          0.4127
+        ]
+      }
+    }
+  },
+  "feature_importance": {
+    "sweep_depth_atr": 0.08968929946422577,
+    "candle_close_location": 0.0694107934832573,
+    "candle_lower_wick_ratio": 0.062153108417987823,
+    "return_5": 0.059437982738018036,
+    "return_20": 0.054731134325265884,
+    "slope_atr": 0.05427848920226097,
+    "candle_body_ratio": 0.05423254147171974,
+    "rolling_volatility": 0.053694408386945724,
+    "dist_to_pdh_atr": 0.052891120314598083,
+    "dist_to_pdl_atr": 0.051311396062374115,
+    "relative_volume_sweep": 0.049767736345529556,
+    "zone_width_atr": 0.04866829141974449,
+    "session_code": 0.04648493975400925,
+    "touch_count": 0.04578545317053795,
+    "line_age": 0.044586554169654846,
+    "pattern_height_atr": 0.03803993761539459,
+    "instrument_code": 0.03802815452218056,
+    "confluence_score": 0.03220891207456589,
+    "bar_separation": 0.025412315502762794,
+    "equality_score": 0.024810129776597023,
+    "pattern_type_code": 0.004377400036901236
+  }
+}

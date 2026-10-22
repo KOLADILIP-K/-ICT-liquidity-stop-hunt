@@ -1,0 +1,22 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environment & credentials
+.env
+.venv/
+venv/
+ENV/
+
+# Testing & Logs
+.pytest_cache/
+*.log
+logs/*.log
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,94 @@
+# ICT Liquidity Intelligence & Stop-Hunt Detection Configuration
+general:
+  instruments:
+    - XAUUSD
+    - XAGUSD
+  default_instrument: XAUUSD
+  timeframe: "15m"
+  log_level: "INFO"
+  random_seed: 42
+
+indicators:
+  atr_period: 14
+  volatility_period: 20
+  volume_ma_period: 20
+  returns_periods: [1, 5, 20]
+
+swings:
+  lookback_k: 3 # Confirmation lookback (k bars before & k bars after)
+
+double_bottom:
+  tolerance_atr: 0.25 # Equal-low tolerance in ATR units
+  min_separation_bars: 5 # Minimum bars between touches
+  max_separation_bars: 60 # Maximum bars between touches
+  min_neckline_atr: 1.5 # Minimum intervening neckline height in ATR
+  sweep_threshold_atr: 0.1 # Minimum sweep penetration in ATR
+  max_reclaim_bars: 3 # Reclaim window in bars
+
+triple_bottom:
+  tolerance_atr: 0.25 # Maximum range of all 3 lows in ATR
+  min_separation_bars: 5 # Minimum bars between consecutive touches
+  max_duration_bars: 120 # Total pattern duration limit in bars
+  min_neckline_atr: 1.5 # Minimum height of intervening peaks
+  sweep_threshold_atr: 0.1
+  max_reclaim_bars: 3
+
+trendline:
+  min_touches: 3 # Minimum swing lows to qualify
+  min_slope_atr: 0.01 # Minimum slope in ATR per bar
+  max_slope_atr: 1.5 # Maximum slope in ATR per bar
+  tolerance_atr: 0.25 # Touch distance tolerance to fitted line
+  min_line_age_bars: 10 # Minimum age of line before qualifying
+  sweep_threshold_atr: 0.1
+  max_reclaim_bars: 3
+
+sessions:
+  timezone: "America/New_York"
+  definitions:
+    Asia: "20:00-00:00"
+    London: "02:00-05:00"
+    NYAM: "09:30-11:00"
+    NYL: "12:00-13:00"
+    NYPM: "13:30-16:00"
+  confluence_distance_atr: 0.5 # Distance threshold to consider a level confluent
+
+labeling:
+  target_atr_x: 1.5 # Target reversal follow-through in ATR
+  invalidation_atr: 1.0 # Invalidation move against trade in ATR
+  horizon_bars_m: 16 # Maximum bars to achieve follow-through
+  max_reclaim_bars_k: 3 # Reclaim window limit
+
+training:
+  train_ratio: 0.60
+  val_ratio: 0.20
+  test_ratio: 0.20
+  embargo_bars: 16 # Purge window between chronological splits
+  cv_folds: 3
+  early_stopping_rounds: 30
+  n_estimators: 300
+  learning_rate: 0.05
+  max_depth: 5
+  subsample: 0.8
+  colsample_bytree: 0.8
+  prob_threshold_low: 0.40
+  prob_threshold_med: 0.60
+  prob_threshold_high: 0.75
+
+backtest:
+  initial_capital: 100000.0
+  risk_per_trade_pct: 1.0
+  max_open_positions: 3
+  cooldown_bars: 5
+  spreads:
+    XAUUSD: 0.25
+    XAGUSD: 0.02
+  slippage_atr: 0.05
+  commission_per_order: 0.50
+  entry_timing: "close" # 'close' of reclaim bar or 'next_open'
+
+storage:
+  database_path: "data/liquidity_system.db"
+  models_dir: "models/"
+  raw_data_dir: "data/raw/"
+  processed_data_dir: "data/processed/"
+  logs_dir: "logs/"
