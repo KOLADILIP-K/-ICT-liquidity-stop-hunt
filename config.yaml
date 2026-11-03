@@ -3,6 +3,8 @@ general:
   instruments:
     - XAUUSD
     - XAGUSD
+    - BTCUSD
+    - ETHUSD
   default_instrument: XAUUSD
   timeframe: "15m"
   log_level: "INFO"
@@ -13,6 +15,14 @@ indicators:
   volatility_period: 20
   volume_ma_period: 20
   returns_periods: [1, 5, 20]
+
+htf_liquidity:
+  daily_weight: 1.0
+  weekly_weight: 2.0
+  monthly_weight: 3.0
+  confluence_atr_tol: 0.35
+  reaction_proximity_atr: 0.30
+  magnet_range_atr: 1.5
 
 swings:
   lookback_k: 3 # Confirmation lookback (k bars before & k bars after)
@@ -59,9 +69,9 @@ labeling:
   max_reclaim_bars_k: 3 # Reclaim window limit
 
 training:
-  train_ratio: 0.60
-  val_ratio: 0.20
-  test_ratio: 0.20
+  train_ratio: 0.80 # 80% training data split
+  val_ratio: 0.10
+  test_ratio: 0.10
   embargo_bars: 16 # Purge window between chronological splits
   cv_folds: 3
   early_stopping_rounds: 30
@@ -82,6 +92,8 @@ backtest:
   spreads:
     XAUUSD: 0.25
     XAGUSD: 0.02
+    BTCUSD: 10.0
+    ETHUSD: 1.0
   slippage_atr: 0.05
   commission_per_order: 0.50
   entry_timing: "close" # 'close' of reclaim bar or 'next_open'

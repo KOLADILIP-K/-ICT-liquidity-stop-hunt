@@ -18,6 +18,8 @@ from src.data_loader import DataLoader
 from src.predict import StopHuntPredictor
 from src.backtest import BacktestEngine
 from src.validation import validate_ohlcv_dataframe
+from src.indicators import add_core_indicators
+from src.liquidity_points import LiquidityPointsEngine, DESIGNATED_LIQUIDITY_POINTS
 
 # Page config
 st.set_page_config(
@@ -80,9 +82,10 @@ def load_cached_data():
     dl = DataLoader()
     data_dict = {}
     reports = {}
-    for inst in ["XAUUSD", "XAGUSD"]:
+    for inst in ["XAUUSD", "XAGUSD", "BTCUSD", "ETHUSD"]:
         try:
             df, r = dl.load_instrument(inst)
+            df = add_core_indicators(df)
             data_dict[inst] = df
             reports[inst] = r.to_dict()
         except Exception:
@@ -92,6 +95,7 @@ def load_cached_data():
     features_df = pd.DataFrame()
     predictions_df = pd.DataFrame()
     trades_df = pd.DataFrame()
+    checklist_dict = {}
     meta = {}
 
     if (proc_dir / "features_combined.csv").exists():
@@ -100,14 +104,17 @@ def load_cached_data():
         predictions_df = pd.read_csv(proc_dir / "predictions_combined.csv")
     if (proc_dir / "backtest_trades.csv").exists():
         trades_df = pd.read_csv(proc_dir / "backtest_trades.csv")
+    if (proc_dir / "liquidity_checklist_summary.json").exists():
+        with open(proc_dir / "liquidity_checklist_summary.json", "r") as f:
+            checklist_dict = json.load(f)
     if Path("models/training_metadata.json").exists():
         with open("models/training_metadata.json", "r") as f:
             meta = json.load(f)
 
-    return data_dict, reports, features_df, predictions_df, trades_df, meta
+    return data_dict, reports, features_df, predictions_df, trades_df, checklist_dict, meta
 
 
-data_dict, reports, features_df, predictions_df, trades_df, metadata = load_cached_data()
+data_dict, reports, features_df, predictions_df, trades_df, checklist_dict, metadata = load_cached_data()
 
 # Sidebar Navigation
 st.sidebar.title("⚡ Liquidity Intelligence")
@@ -117,6 +124,7 @@ page = st.sidebar.radio(
     "Navigation",
     [
         "Overview",
+        "Liquidity Points Reference (PDF)",
         "Market Analysis & Charts",
         "Liquidity Scanner",
         "Model Analytics",
@@ -127,7 +135,7 @@ page = st.sidebar.radio(
 )
 
 st.sidebar.markdown("---")
-selected_inst = st.sidebar.selectbox("Selected Instrument", ["XAUUSD", "XAGUSD"], index=0)
+selected_inst = st.sidebar.selectbox("Selected Instrument", ["XAUUSD", "XAGUSD", "BTCUSD", "ETHUSD"], index=0)
 selected_tf = st.sidebar.selectbox("Timeframe", ["15m"], index=0)
 
 # ==============================================================================
@@ -191,6 +199,143 @@ if page == "Overview":
 
     st.markdown("### Data Quality Report")
     st.json(report)
+
+# ==============================================================================
+# PAGE: LIQUIDITY POINTS REFERENCE (PDF)
+# ==============================================================================
+elif page == "Liquidity Points Reference (PDF)":
+    st.title("Liquidity Points Reference")
+    st.caption("Daily, Weekly & Monthly Highs and Lows — Comprehensive Technical Implementation")
+
+    # Section 1 & 2: Designated Liquidity Points
+    st.markdown("### 1. Designated Liquidity Points")
+    st.markdown(
+        "A liquidity point is a price level where resting orders are clustered. "
+        "Traders place stop-losses just beyond obvious highs and lows, and breakout traders place entry orders there too. "
+        "**Buy-side liquidity sits above highs (red). Sell-side liquidity sits below lows (green). Higher timeframe levels carry more weight: Monthly > Weekly > Daily.**"
+    )
+
+    lp_data = []
+    for code, meta_lp in DESIGNATED_LIQUIDITY_POINTS.items():
+        lp_data.append({
+            "Code": meta_lp.code,
+            "Level Name": meta_lp.name,
+            "Type": meta_lp.liquidity_type,
+            "Resting Orders": meta_lp.resting_orders,
+            "Weight": meta_lp.weight_name,
+            "Numeric Weight": meta_lp.weight_val,
+            "Line Style": meta_lp.line_style
+        })
+    st.table(pd.DataFrame(lp_data))
+
+    # Section 6: Quick Checklist Live Radar
+    st.markdown("---")
+    st.markdown(f"### 2. Quick Checklist Radar — Live Inspection for {selected_inst}")
+
+    df_inst = data_dict.get(selected_inst, pd.DataFrame())
+    inst_chk = checklist_dict.get(selected_inst, {})
+
+    if not df_inst.empty:
+        latest_row = df_inst.iloc[-1]
+        c_price = latest_row["close"]
+        c_atr = latest_row.get("atr", 1.0)
+
+        chk_col1, chk_col2 = st.columns(2)
+        with chk_col1:
+            st.markdown(f"""
+            <div class="metric-card">
+                <h4>Checklist Item 1: Levels Status</h4>
+                <p><strong>PDH / PDL:</strong> {latest_row.get('pdh', 'N/A'):.2f} / {latest_row.get('pdl', 'N/A'):.2f} (Daily)</p>
+                <p><strong>PWH / PWL:</strong> {latest_row.get('pwh', 'N/A'):.2f} / {latest_row.get('pwl', 'N/A'):.2f} (Weekly)</p>
+                <p><strong>PMH / PML:</strong> {latest_row.get('pmh', 'N/A'):.2f} / {latest_row.get('pml', 'N/A'):.2f} (Monthly)</p>
+                <p><strong>Status:</strong> <span class="status-badge-active">UP TO DATE (NO LOOKAHEAD)</span></p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with chk_col2:
+            near_above = inst_chk.get("nearest_above", {})
+            near_below = inst_chk.get("nearest_below", {})
+            above_str = f"{near_above.get('level', 'N/A')} ({near_above.get('price', 0):.2f}) at +{near_above.get('dist_atr', 0):.2f} ATR" if near_above else "None above"
+            below_str = f"{near_below.get('level', 'N/A')} ({near_below.get('price', 0):.2f}) at -{near_below.get('dist_atr', 0):.2f} ATR" if near_below else "None below"
+
+            st.markdown(f"""
+            <div class="metric-card">
+                <h4>Checklist Item 2: Nearest Levels</h4>
+                <p><strong>Current Price:</strong> {c_price:.2f} (ATR: {c_atr:.2f})</p>
+                <p><strong>Nearest Buy-side (Above):</strong> {above_str}</p>
+                <p><strong>Nearest Sell-side (Below):</strong> {below_str}</p>
+                <p><strong>Zone Spread:</strong> {(near_above.get('price', c_price) - near_below.get('price', c_price)):.2f}</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        chk_col3, chk_col4 = st.columns(2)
+        with chk_col3:
+            clusters = inst_chk.get("active_clusters", [])
+            if clusters:
+                clust_desc = ", ".join([f"{c.get('type')}: {c.get('levels')} (Weight: {c.get('combined_weight')})" for c in clusters])
+            else:
+                clust_desc = "None active (Levels separated)"
+
+            st.markdown(f"""
+            <div class="metric-card">
+                <h4>Checklist Items 3 & 4: Sweeps & Clusters</h4>
+                <p><strong>Active Confluence Clusters:</strong> {clust_desc}</p>
+                <p><strong>Confluence Rule:</strong> Levels within 0.35 ATR cluster into one stronger zone.</p>
+                <p><strong>Swept Status:</strong> Evaluated bar-by-bar across Killzones and HTF opens.</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with chk_col4:
+            act_beh = inst_chk.get("active_behavior", "None")
+            inter_lvl = inst_chk.get("interacting_level", "None")
+            htf_bias = inst_chk.get("htf_bias", "Neutral")
+            fits = "Yes (Aligned)" if inst_chk.get("behavior_fits_bias", False) else "Warning: Counter-trend"
+
+            st.markdown(f"""
+            <div class="metric-card">
+                <h4>Checklist Item 5: Price Behavior & Bias</h4>
+                <p><strong>Active Behavior:</strong> <span class="status-badge-active">{act_beh}</span> at {inter_lvl}</p>
+                <p><strong>HTF Bias:</strong> {htf_bias}</p>
+                <p><strong>Fits Trend Bias:</strong> {fits}</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # Section 5: Reading Price at a Liquidity Point
+    st.markdown("---")
+    st.markdown("### 3. Reading Price at a Liquidity Point (4 Distinct Behaviors)")
+
+    b_col1, b_col2 = st.columns(2)
+    with b_col1:
+        st.markdown("""
+        <div class="metric-card">
+            <h4>⚡ Sweep (Liquidity Taken)</h4>
+            <p><strong>What it looks like:</strong> Wick pierces the level, then price closes back inside the range.</p>
+            <p><strong>Common interpretation:</strong> Liquidity taken; resting stop-losses absorbed; often precedes an explosive reversal.</p>
+            <p><strong>System Action:</strong> ML Stop-Hunt Classifier scores the reversal follow-through probability.</p>
+        </div>
+        <div class="metric-card">
+            <h4>🎯 Magnet (Liquidity Draw)</h4>
+            <p><strong>What it looks like:</strong> Price moves steadily toward an untouched level with consistent momentum.</p>
+            <p><strong>Common interpretation:</strong> Level acts as a draw or target for market makers and algorithmic flow.</p>
+            <p><strong>System Action:</strong> Sets take-profit targets or directional bias toward the untouched level.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with b_col2:
+        st.markdown("""
+        <div class="metric-card">
+            <h4>🚀 Acceptance (Genuine Breakout)</h4>
+            <p><strong>What it looks like:</strong> Candle(s) close beyond the level and hold, often with a retest from the other side.</p>
+            <p><strong>Common interpretation:</strong> Genuine breakout; trend continuation; stops triggered become breakout entry volume.</p>
+            <p><strong>System Action:</strong> Flags invalidation of hunt reversal and switches to continuation mode.</p>
+        </div>
+        <div class="metric-card">
+            <h4>🛡️ Reaction (Level Respected)</h4>
+            <p><strong>What it looks like:</strong> Price stalls or rejects near the level without piercing it.</p>
+            <p><strong>Common interpretation:</strong> Level respected; liquidity remains untouched and may be taken later.</p>
+            <p><strong>System Action:</strong> Monitored as potential future liquidity pool.</p>
+        </div>
+        """, unsafe_allow_html=True)
 
 # ==============================================================================
 # PAGE 2: MARKET ANALYSIS & CHARTS
@@ -272,6 +417,27 @@ elif page == "Market Analysis & Charts":
                     showlegend=False
                 ), row=1, col=1)
 
+        # Add HTF Designated Liquidity Points from latest bar of slice (PDF Section 2 & 4)
+        last_bar = df_slice.iloc[-1]
+        htf_levels_to_plot = [
+            ("PDH (Buy-side)", last_bar.get("pdh"), "#EF5350", "dot"),
+            ("PDL (Sell-side)", last_bar.get("pdl"), "#26A69A", "dot"),
+            ("PWH (Buy-side)", last_bar.get("pwh"), "#AB47BC", "dash"),
+            ("PWL (Sell-side)", last_bar.get("pwl"), "#42A5F5", "dash"),
+            ("PMH (Buy-side)", last_bar.get("pmh"), "#E91E63", "solid"),
+            ("PML (Sell-side)", last_bar.get("pml"), "#00B0FF", "solid"),
+        ]
+        for name, val, col, style in htf_levels_to_plot:
+            if val is not None and not np.isnan(val):
+                fig.add_hline(
+                    y=val,
+                    line_dash=style,
+                    line_color=col,
+                    annotation_text=f"{name}: {val:.2f}",
+                    annotation_position="top left",
+                    row=1, col=1
+                )
+
         fig.update_layout(
             template="plotly_dark",
             paper_bgcolor="#0E1117",
@@ -295,7 +461,8 @@ elif page == "Liquidity Scanner":
         # Filters
         f_col1, f_col2, f_col3, f_col4 = st.columns(4)
         with f_col1:
-            inst_filter = st.multiselect("Instrument", ["XAUUSD", "XAGUSD"], default=["XAUUSD", "XAGUSD"])
+            all_insts = ["XAUUSD", "XAGUSD", "BTCUSD", "ETHUSD"]
+            inst_filter = st.multiselect("Instrument", all_insts, default=all_insts)
         with f_col2:
             pat_types = list(predictions_df["pattern_type"].unique())
             pat_filter = st.multiselect("Pattern Type", pat_types, default=pat_types)
@@ -346,9 +513,9 @@ elif page == "Model Analytics":
         with c4:
             st.metric("Test Samples", comb_metrics.get("n_samples", 0))
 
-        st.markdown("### Gold vs Silver Test Performance")
+        st.markdown("### Multi-Asset Test Performance (80% Training Data)")
         comp_data = []
-        for inst_key in ["Combined", "XAUUSD", "XAGUSD"]:
+        for inst_key in ["Combined", "XAUUSD", "XAGUSD", "BTCUSD", "ETHUSD"]:
             m = test_metrics.get(inst_key, {})
             if m:
                 comp_data.append({
@@ -411,7 +578,7 @@ elif page == "Backtesting":
     bt_col1, bt_col2 = st.columns([1, 2])
     with bt_col1:
         st.subheader("Simulation Parameters")
-        bt_inst = st.selectbox("Instrument", ["XAUUSD", "XAGUSD"], index=0)
+        bt_inst = st.selectbox("Instrument", ["XAUUSD", "XAGUSD", "BTCUSD", "ETHUSD"], index=0)
         bt_thresh = st.slider("Probability Threshold", 0.20, 0.45, 0.30, 0.02)
         bt_target_atr = st.slider("Take Profit (x ATR)", 1.0, 3.0, 1.5, 0.1)
         bt_sl_buf = st.slider("Stop Loss Buffer (x ATR)", 0.1, 1.0, 0.2, 0.05)

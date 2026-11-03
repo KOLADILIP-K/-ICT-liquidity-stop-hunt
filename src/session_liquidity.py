@@ -100,7 +100,7 @@ class SessionLiquidityManager:
 
         highs = df_out["high"].values
         lows = df_out["low"].values
-        ts_loc_list = ts_local.dt.to_pydatetime()
+        ts_loc_list = np.array(ts_local.dt.to_pydatetime())
 
         for i in range(n):
             dt = ts_loc_list[i]

@@ -22,7 +22,7 @@ from src.predict import StopHuntPredictor
 
 def run_live_inference():
     print("=" * 80)
-    print("EXECUTING STOP-HUNT INFERENCE ENGINE (XAUUSD & XAGUSD)")
+    print("EXECUTING STOP-HUNT INFERENCE ENGINE (XAUUSD, XAGUSD, BTCUSD, ETHUSD)")
     print("=" * 80)
 
     predictor = StopHuntPredictor()
@@ -35,7 +35,7 @@ def run_live_inference():
     print(f"Model Status:  {predictor.metadata.get('model_type', 'Boosted Trees')}")
     print(f"Model Version: {predictor.metadata.get('model_version', 'v1.0.0')}")
     print(f"Engine:        {predictor.metadata.get('engine', 'scikit-learn / xgboost')}")
-    print(f"Trained On:    {predictor.metadata.get('train_samples', 'N/A')} samples")
+    print(f"Trained On:    {predictor.metadata.get('train_samples', 'N/A')} samples (80% Train Split)")
     print("-" * 80)
 
     dl = DataLoader()
@@ -45,7 +45,7 @@ def run_live_inference():
     labeling_engine = LabelingEngine()
     feature_engineer = FeatureEngineer(session_manager=session_mgr)
 
-    instruments = ["XAUUSD", "XAGUSD"]
+    instruments = ["XAUUSD", "XAGUSD", "BTCUSD", "ETHUSD"]
 
     for inst in instruments:
         print(f"\nScanning {inst} (Latest Candles)...")

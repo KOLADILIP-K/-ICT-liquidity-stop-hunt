@@ -1,0 +1,118 @@
+{
+  "XAUUSD": {
+    "timestamp": "2026-10-14 22:45:00+00:00",
+    "current_price": 4101.4,
+    "atr": 8.131935316280803,
+    "levels_up_to_date": true,
+    "all_levels": {
+      "PDH": 4200.36,
+      "PDL": 4146.82,
+      "PWH": 4210.41,
+      "PWL": 4066.3,
+      "PMH": 4510.76,
+      "PML": 4108.33
+    },
+    "nearest_above": {
+      "level": "PML",
+      "price": 4108.33,
+      "dist_atr": 0.8521956619755523
+    },
+    "nearest_below": {
+      "level": "PWL",
+      "price": 4066.3,
+      "dist_atr": 4.316315690525276
+    },
+    "active_clusters": [],
+    "active_behavior": "Acceptance",
+    "interacting_level": "PML",
+    "htf_bias": "Neutral",
+    "behavior_fits_bias": false
+  },
+  "XAGUSD": {
+    "timestamp": "2026-10-14 22:45:00+00:00",
+    "current_price": 49.222,
+    "atr": 0.13285400368290887,
+    "levels_up_to_date": true,
+    "all_levels": {
+      "PDH": 50.676,
+      "PDL": 49.68,
+      "PWH": 50.625,
+      "PWL": 48.05,
+      "PMH": 53.711,
+      "PML": 48.729
+    },
+    "nearest_above": {
+      "level": "PDL",
+      "price": 49.68,
+      "dist_atr": 3.4473932836313783
+    },
+    "nearest_below": {
+      "level": "PML",
+      "price": 48.729,
+      "dist_atr": 3.710840368625071
+    },
+    "active_clusters": [],
+    "active_behavior": "Acceptance",
+    "interacting_level": "PDL",
+    "htf_bias": "Neutral",
+    "behavior_fits_bias": false
+  },
+  "BTCUSD": {
+    "timestamp": "2026-09-30 23:45:00+00:00",
+    "current_price": 83623.6,
+    "atr": 165.95677376465105,
+    "levels_up_to_date": true,
+    "all_levels": {
+      "PDH": 84563.99,
+      "PDL": 82900.0,
+      "PWH": 87395.67,
+      "PWL": 81228.15,
+      "PMH": 81478.87,
+      "PML": 62275.0
+    },
+    "nearest_above": {
+      "level": "PDH",
+      "price": 84563.99,
+      "dist_atr": 5.666475544611385
+    },
+    "nearest_below": {
+      "level": "PDL",
+      "price": 82900.0,
+      "dist_atr": 4.360171528919739
+    },
+    "active_clusters": [],
+    "active_behavior": "Acceptance",
+    "interacting_level": "PMH",
+    "htf_bias": "Bearish",
+    "behavior_fits_bias": false
+  },
+  "ETHUSD": {
+    "timestamp": "2026-10-14 23:45:00+00:00",
+    "current_price": 2421.6,
+    "atr": 9.10282254315067,
+    "levels_up_to_date": true,
+    "all_levels": {
+      "PDH": 2538.52,
+      "PDL": 2489.0,
+      "PWH": 2734.55,
+      "PWL": 2406.11,
+      "PMH": 2807.34,
+      "PML": 2356.41
+    },
+    "nearest_above": {
+      "level": "PDL",
+      "price": 2489.0,
+      "dist_atr": 7.4042968189811145
+    },
+    "nearest_below": {
+      "level": "PWL",
+      "price": 2406.11,
+      "dist_atr": 1.7016699959349508
+    },
+    "active_clusters": [],
+    "active_behavior": "Acceptance",
+    "interacting_level": "PDL",
+    "htf_bias": "Bearish",
+    "behavior_fits_bias": true
+  }
+}

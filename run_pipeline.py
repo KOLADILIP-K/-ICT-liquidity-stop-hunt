@@ -57,16 +57,17 @@ def run_full_pipeline():
     proc_dir = Path("data/processed")
     proc_dir.mkdir(parents=True, exist_ok=True)
 
-    instruments = ["XAUUSD", "XAGUSD"]
+    instruments = ["XAUUSD", "XAGUSD", "BTCUSD", "ETHUSD"]
     all_feature_dfs = []
     all_patterns = []
     all_events = []
     enriched_dfs = {}
+    checklist_summaries = {}
 
-    # Sample for pipeline if large: we can use a representative slice (e.g. 15,000 bars per instrument)
-    # for super fast, high-quality development, or all bars. Let's use 20,000 bars per instrument (~1.5 years of 15m)
-    # which gives hundreds of clean patterns and trains in seconds!
-    SAMPLE_BARS = 20000
+    from src.liquidity_points import LiquidityPointsEngine
+    lp_engine = LiquidityPointsEngine()
+
+    SAMPLE_BARS = 25000
 
     for inst in instruments:
         print(f"\nProcessing {inst}...")
@@ -75,11 +76,12 @@ def run_full_pipeline():
             print(f"Selecting latest {SAMPLE_BARS} candles for focused research evaluation.")
             df_raw = df_raw.iloc[-SAMPLE_BARS:].reset_index(drop=True)
 
-        print(f"- Adding core technical indicators (ATR, anatomy, returns, PDH/PDL)...")
+        print(f"- Adding core technical indicators (ATR, anatomy, returns, PDH/PDL, PWH/PWL, PMH/PML)...")
         df_ind = add_core_indicators(df_raw, atr_period=14)
 
         print(f"- Computing Option B session high/low levels...")
         df_sess, sess_levels = session_mgr.compute_session_levels(df_ind)
+        df_sess["instrument"] = inst
         enriched_dfs[inst] = df_sess
 
         print(f"- Detecting confirmed swing highs and lows (k=3)...")
@@ -91,7 +93,7 @@ def run_full_pipeline():
         print(f"  Found {len(patterns)} valid structural liquidity patterns.")
         all_patterns.extend(patterns)
 
-        print(f"- Evaluating sweeps, reclaims, and target follow-through labels...")
+        print(f"- Evaluating sweeps, reclaims, HTF liquidity points, and follow-through labels...")
         events = labeling_engine.generate_events_and_labels(df_sess, patterns)
         print(f"  Generated {len(events)} candidate sweep events.")
         all_events.extend(events)
@@ -100,6 +102,27 @@ def run_full_pipeline():
         feat_df = feature_engineer.create_feature_dataset(df_sess, patterns, events)
         all_feature_dfs.append(feat_df)
         feat_df.to_csv(proc_dir / f"features_{inst}.csv", index=False)
+
+        # Run Section 6 checklist on the latest bar for terminal inspection
+        latest_chk = lp_engine.evaluate_bar_checklist(len(df_sess) - 1, df_sess)
+        checklist_summaries[inst] = {
+            "timestamp": str(latest_chk.timestamp),
+            "current_price": float(latest_chk.current_price),
+            "atr": float(latest_chk.atr),
+            "levels_up_to_date": bool(latest_chk.levels_up_to_date),
+            "all_levels": {k: float(v) for k, v in latest_chk.all_levels.items() if not np.isnan(v)},
+            "nearest_above": {"level": latest_chk.nearest_above[0], "price": float(latest_chk.nearest_above[1]), "dist_atr": float(latest_chk.nearest_above[2])} if latest_chk.nearest_above else None,
+            "nearest_below": {"level": latest_chk.nearest_below[0], "price": float(latest_chk.nearest_below[1]), "dist_atr": float(latest_chk.nearest_below[2])} if latest_chk.nearest_below else None,
+            "active_clusters": [{"center": float(c.center_price), "levels": c.levels, "combined_weight": float(c.combined_weight), "type": c.zone_type} for c in latest_chk.confluence_clusters],
+            "active_behavior": str(latest_chk.active_behavior),
+            "interacting_level": str(latest_chk.interacting_level),
+            "htf_bias": str(latest_chk.htf_bias),
+            "behavior_fits_bias": bool(latest_chk.behavior_fits_bias)
+        }
+
+    # Save checklist summary
+    with open(proc_dir / "liquidity_checklist_summary.json", "w") as f:
+        json.dump(checklist_summaries, f, indent=2)
 
     # Combine datasets
     combined_features = pd.concat(all_feature_dfs, ignore_index=True)
@@ -110,14 +133,14 @@ def run_full_pipeline():
     label_counts = combined_features["label"].value_counts().to_dict()
     print(f"Label distribution: {label_counts}")
 
-    # 2. Train shared XGBoost model
-    print("\nTraining Shared XGBoost Classifier...")
+    # 2. Train shared XGBoost model on 80% chronological train data
+    print("\nTraining Shared XGBoost Classifier (80% Chronological Training Data)...")
     xgb_model, calibrator, metadata = trainer.train_shared_model(combined_features)
     print("Test Set Performance Summary:")
     print(json.dumps(metadata.get("test_metrics", {}), indent=2))
 
     # 3. Cross-instrument transfer experiments
-    print("\nRunning Cross-Instrument Transfer Experiments...")
+    print("\nRunning Cross-Instrument Transfer Experiments across Metals and Crypto...")
     cross_metrics = trainer.run_cross_instrument_experiments(combined_features)
     print(json.dumps(cross_metrics, indent=2))
     with open(proc_dir / "cross_instrument_results.json", "w") as f:
@@ -130,35 +153,28 @@ def run_full_pipeline():
     pred_features = predictor.predict_batch(combined_features)
     pred_features.to_csv(proc_dir / "predictions_combined.csv", index=False)
 
-    # 5. Run Backtests
-    print("\nRunning Backtest on XAUUSD...")
-    gold_features = pred_features[pred_features["instrument"] == "XAUUSD"]
-    trades_gold, equity_gold, metrics_gold = backtester.run_backtest(
-        df=enriched_dfs["XAUUSD"],
-        signals_df=gold_features,
-        probability_threshold=0.30
-    )
-    print(f"Gold Backtest: {metrics_gold.get('total_trades')} trades, Net Profit: ${metrics_gold.get('net_profit')}, Win Rate: {metrics_gold.get('win_rate')}%")
+    # 5. Run Backtests across all 4 instruments
+    backtest_summary = {}
+    trade_list = []
 
-    print("\nRunning Backtest on XAGUSD...")
-    silver_features = pred_features[pred_features["instrument"] == "XAGUSD"]
-    trades_silver, equity_silver, metrics_silver = backtester.run_backtest(
-        df=enriched_dfs["XAGUSD"],
-        signals_df=silver_features,
-        probability_threshold=0.30
-    )
-    print(f"Silver Backtest: {metrics_silver.get('total_trades')} trades, Net Profit: ${metrics_silver.get('net_profit')}, Win Rate: {metrics_silver.get('win_rate')}%")
+    for inst in instruments:
+        print(f"\nRunning Backtest on {inst}...")
+        inst_features = pred_features[pred_features["instrument"] == inst]
+        trades, equity, metrics = backtester.run_backtest(
+            df=enriched_dfs[inst],
+            signals_df=inst_features,
+            probability_threshold=0.30
+        )
+        print(f"{inst} Backtest: {metrics.get('total_trades')} trades, Net Profit: ${metrics.get('net_profit')}, Win Rate: {metrics.get('win_rate')}%, Max DD: {metrics.get('max_drawdown_pct')}%")
+        backtest_summary[inst] = metrics
+        if not trades.empty:
+            trade_list.append(trades)
+        if not equity.empty:
+            equity.to_csv(proc_dir / f"backtest_equity_{inst}.csv", index=False)
 
-    # Combine backtest records
-    all_trades = pd.concat([trades_gold, trades_silver], ignore_index=True) if not trades_gold.empty and not trades_silver.empty else (trades_gold if not trades_gold.empty else trades_silver)
+    all_trades = pd.concat(trade_list, ignore_index=True) if trade_list else pd.DataFrame()
     all_trades.to_csv(proc_dir / "backtest_trades.csv", index=False)
-    equity_gold.to_csv(proc_dir / "backtest_equity_XAUUSD.csv", index=False)
-    equity_silver.to_csv(proc_dir / "backtest_equity_XAGUSD.csv", index=False)
 
-    backtest_summary = {
-        "XAUUSD": metrics_gold,
-        "XAGUSD": metrics_silver
-    }
     with open(proc_dir / "backtest_summary.json", "w") as f:
         json.dump(backtest_summary, f, indent=2)
 

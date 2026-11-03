@@ -1,8 +1,9 @@
-# ICT Liquidity Intelligence & XGBoost Stop-Hunt Detection System
+# ICT Liquidity Intelligence & Multi-Asset Stop-Hunt Detection System
+## Gold (XAUUSD), Silver (XAGUSD), Bitcoin (BTCUSD), Ethereum (ETHUSD)
 
-An enterprise-grade, modular quantitative research and execution system for detecting resting liquidity sweeps, stop-loss hunts, and reversal follow-through in **XAUUSD (Gold)** and **XAGUSD (Silver)**.
+An enterprise-grade, modular quantitative research and execution system for detecting resting liquidity sweeps, stop-loss hunts, and reversal follow-through across **Precious Metals (Gold, Silver)** and **Cryptocurrencies (Bitcoin, Ethereum)**.
 
-The system combines ICT Killzones and session high/low levels with algorithmic Double-Bottom, Triple-Bottom, and Trendline detection, a leakage-free feature pipeline, an XGBoost classifier, a Pine Script v6 TradingView indicator, and an interactive Streamlit research terminal.
+The system implements the **Liquidity Points Reference** (PDH/PDL, PWH/PWL, PMH/PML, Confluence Clustering, and the 4 Price Behaviors: Sweep, Acceptance, Reaction, Magnet) combined with ICT Killzones, algorithmic Double/Triple Bottoms, Trendlines, a zero-leakage 28-feature pipeline, an **XGBoost classifier trained on 80% chronological data**, an expanded TradingView Pine Script v6 indicator, and an interactive Streamlit terminal.
 
 ---
 
@@ -11,35 +12,34 @@ The system combines ICT Killzones and session high/low levels with algorithmic D
 ```mermaid
 flowchart TD
     subgraph Data ["Data Layer"]
-        A1["Dukascopy / Broker M15 CSVs"] --> A2["Data Loader & Validator"]
-        A2 --> A3["Core Technical Indicators (ATR, Ratios, PDH/PDL)"]
+        A1["M15 OHLCV: Gold, Silver, BTC, ETH"] --> A2["Data Loader & Validator"]
+        A2 --> A3["HTF Liquidity: PDH/PDL, PWH/PWL, PMH/PML (No Look-Ahead)"]
     end
 
     subgraph Detection ["Liquidity Detection Engine"]
         A3 --> B1["Option B Session Levels (Asia, London, NY)"]
-        A3 --> B2["Confirmed Swings Detector (k-lag, No Look-Ahead)"]
-        B2 --> B3["Double Bottom Detector (|L1-L2| <= 0.25 ATR)"]
-        B2 --> B4["Triple Bottom Detector (3 Touches, <= 0.25 ATR)"]
-        B2 --> B5["Ascending Trendline Detector (>= 3 Touches)"]
+        A3 --> B2["Confluence Clustering (Levels within 0.35 ATR)"]
+        A3 --> B3["Reading Price: Sweep, Acceptance, Reaction, Magnet"]
+        A3 --> B4["Structural Patterns (Double/Triple Bottoms, Trendlines)"]
     end
 
     subgraph Labeling ["Outcome Evaluation & Labeling"]
-        B1 & B3 & B4 & B5 --> C1["Sweep & Reclaim Engine"]
+        B1 & B2 & B3 & B4 --> C1["Sweep & Reclaim Engine (Highs & Lows)"]
         C1 --> C2["Labeling Engine: 1 (Hunt Reversal), 0 (Non-Hunt), Breakdown"]
     end
 
     subgraph ML ["Machine Learning Pipeline"]
-        C2 --> D1["Zero-Leakage Feature Pipeline (21 Features)"]
-        D1 --> D2["Chronological Split (60% Train, 20% Val, 20% Test)"]
-        D2 --> D3["XGBoost Ensemble Classifier"]
+        C2 --> D1["Zero-Leakage Feature Pipeline (28 Features)"]
+        D1 --> D2["Chronological Split: 80% Train, 10% Val, 10% Test"]
+        D2 --> D3["XGBoost Multi-Asset Ensemble Classifier"]
         D3 --> D4["Probability Calibration (Sigmoid on Val Set)"]
         D4 --> D5["Artifacts: Model Binary, Schema, Metadata"]
     end
 
     subgraph Outputs ["Execution & Dashboards"]
-        D5 --> E1["Streamlit Trading Terminal (7 Interactive Pages)"]
+        D5 --> E1["Streamlit Trading Terminal (8 Interactive Pages)"]
         D5 --> E2["FastAPI Webhook & Inference Server"]
-        D5 --> E3["Realistic Cost Backtester (Spread, Slippage, Fees)"]
+        D5 --> E3["Multi-Asset Realistic Cost Backtester (Long & Short)"]
         E2 <--> E4["TradingView Pine Script v6 Indicator"]
     end
 ```

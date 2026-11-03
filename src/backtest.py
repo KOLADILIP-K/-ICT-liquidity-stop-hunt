@@ -65,6 +65,8 @@ class BacktestEngine:
         cooldown_bars: int = 5,
         spread_gold: float = 0.25,
         spread_silver: float = 0.02,
+        spread_btc: float = 10.0,
+        spread_eth: float = 1.0,
         slippage_atr: float = 0.05,
         commission_per_order: float = 0.50,
         target_atr_x: float = 1.5,
@@ -77,11 +79,25 @@ class BacktestEngine:
         self.cooldown_bars = cooldown_bars
         self.spread_gold = spread_gold
         self.spread_silver = spread_silver
+        self.spread_btc = spread_btc
+        self.spread_eth = spread_eth
         self.slippage_atr = slippage_atr
         self.commission_per_order = commission_per_order
         self.target_atr_x = target_atr_x
         self.sl_buffer_atr = sl_buffer_atr
         self.max_holding_bars = max_holding_bars
+
+    def _get_spread(self, instrument: str) -> float:
+        inst_u = str(instrument).upper()
+        if "XAU" in inst_u:
+            return self.spread_gold
+        elif "XAG" in inst_u:
+            return self.spread_silver
+        elif "BTC" in inst_u:
+            return self.spread_btc
+        elif "ETH" in inst_u:
+            return self.spread_eth
+        return self.spread_gold
 
     def run_backtest(
         self,
@@ -90,17 +106,7 @@ class BacktestEngine:
         probability_threshold: float = 0.60
     ) -> Tuple[pd.DataFrame, pd.DataFrame, Dict[str, Any]]:
         """
-        Executes sequential bar-by-bar simulation.
-        
-        Args:
-            df: OHLCV DataFrame with 'atr'.
-            signals_df: DataFrame with 'sweep_bar_index', 'reclaim_bar_index', 'hunt_probability', 'level_price'.
-            probability_threshold: Minimum probability to trigger entry.
-        
-        Returns:
-            trades_df: DataFrame of completed trades.
-            equity_curve: DataFrame of equity and drawdown over time.
-            summary_metrics: Performance dictionary.
+        Executes sequential bar-by-bar simulation for both Long and Short trades.
         """
         if signals_df.empty or df.empty:
             return pd.DataFrame(), pd.DataFrame(), {"error": "Empty data"}
@@ -132,13 +138,14 @@ class BacktestEngine:
         opens = df["open"].values
         timestamps = df["timestamp"].values
         atrs = df["atr"].values if "atr" in df.columns else np.full(n, 1.0)
-        instruments = df["instrument"].values if "instrument" in df.columns else ["XAUUSD"] * n
+        default_inst = str(signals_df["instrument"].iloc[0]) if "instrument" in signals_df.columns and not signals_df.empty else "XAUUSD"
+        instruments = df["instrument"].values if "instrument" in df.columns else [default_inst] * n
 
         for i in range(n):
             dt = pd.Timestamp(timestamps[i]).to_pydatetime()
             bar_atr = max(atrs[i], 1e-4)
             inst = instruments[i]
-            spread = self.spread_gold if "XAU" in str(inst).upper() else self.spread_silver
+            spread = self._get_spread(inst)
             slip = self.slippage_atr * bar_atr
 
             # 1. Manage active open trades
@@ -149,34 +156,57 @@ class BacktestEngine:
                 hit_sl = False
                 exit_price = 0.0
 
-                # Check Stop Loss first (conservative evaluation)
-                if lows[i] <= t.stop_loss:
-                    hit_sl = True
-                    exit_price = min(t.stop_loss, opens[i]) - slip
-                    t.exit_reason = "STOP_LOSS"
-                elif highs[i] >= t.take_profit:
-                    hit_tp = True
-                    exit_price = max(t.take_profit, opens[i]) - slip
-                    t.exit_reason = "TAKE_PROFIT"
-                elif t.duration_bars >= self.max_holding_bars:
-                    # Timeout exit
-                    exit_price = closes[i] - slip
-                    t.exit_reason = "TIMEOUT"
+                if t.direction == "BUY":
+                    if lows[i] <= t.stop_loss:
+                        hit_sl = True
+                        exit_price = min(t.stop_loss, opens[i]) - slip
+                        t.exit_reason = "STOP_LOSS"
+                    elif highs[i] >= t.take_profit:
+                        hit_tp = True
+                        exit_price = max(t.take_profit, opens[i]) - slip
+                        t.exit_reason = "TAKE_PROFIT"
+                    elif t.duration_bars >= self.max_holding_bars:
+                        exit_price = closes[i] - slip
+                        t.exit_reason = "TIMEOUT"
 
-                if hit_sl or hit_tp or t.duration_bars >= self.max_holding_bars:
-                    t.exit_price = exit_price
-                    t.exit_time = dt
-                    # PnL
-                    price_diff = t.exit_price - t.entry_price
-                    t.pnl_gross = price_diff * t.position_size
-                    # Costs: 2 orders (entry + exit), half spread on each side
-                    cost = (spread * t.position_size) + (2 * self.commission_per_order)
-                    t.costs_total = cost
-                    t.pnl_net = t.pnl_gross - cost
-                    current_capital += t.pnl_net
-                    closed_trades.append(t)
-                else:
-                    remaining_trades.append(t)
+                    if hit_sl or hit_tp or t.duration_bars >= self.max_holding_bars:
+                        t.exit_price = exit_price
+                        t.exit_time = dt
+                        price_diff = t.exit_price - t.entry_price
+                        t.pnl_gross = price_diff * t.position_size
+                        cost = (spread * t.position_size) + (2 * self.commission_per_order)
+                        t.costs_total = cost
+                        t.pnl_net = t.pnl_gross - cost
+                        current_capital += t.pnl_net
+                        closed_trades.append(t)
+                    else:
+                        remaining_trades.append(t)
+
+                else:  # SELL
+                    if highs[i] >= t.stop_loss:
+                        hit_sl = True
+                        exit_price = max(t.stop_loss, opens[i]) + slip
+                        t.exit_reason = "STOP_LOSS"
+                    elif lows[i] <= t.take_profit:
+                        hit_tp = True
+                        exit_price = min(t.take_profit, opens[i]) + slip
+                        t.exit_reason = "TAKE_PROFIT"
+                    elif t.duration_bars >= self.max_holding_bars:
+                        exit_price = closes[i] + slip
+                        t.exit_reason = "TIMEOUT"
+
+                    if hit_sl or hit_tp or t.duration_bars >= self.max_holding_bars:
+                        t.exit_price = exit_price
+                        t.exit_time = dt
+                        price_diff = t.entry_price - t.exit_price
+                        t.pnl_gross = price_diff * t.position_size
+                        cost = (spread * t.position_size) + (2 * self.commission_per_order)
+                        t.costs_total = cost
+                        t.pnl_net = t.pnl_gross - cost
+                        current_capital += t.pnl_net
+                        closed_trades.append(t)
+                    else:
+                        remaining_trades.append(t)
 
             active_trades = remaining_trades
 
@@ -188,24 +218,33 @@ class BacktestEngine:
                             break
 
                         prob = float(sig["hunt_probability"])
-                        entry_price = closes[i] + (spread / 2.0) + slip
-                        level = float(sig.get("level_price", closes[i]))
-                        sweep_ext = float(sig.get("sweep_price_extreme", level - 0.2 * bar_atr))
-                        
-                        # Stop loss placed below sweep extreme with buffer
-                        sl_price = sweep_ext - (self.sl_buffer_atr * bar_atr)
-                        tp_price = entry_price + (self.target_atr_x * bar_atr)
+                        sig_dir = str(sig.get("direction", "bullish")).lower()
+                        trade_dir = "BUY" if sig_dir == "bullish" else "SELL"
 
-                        risk_per_unit = max(entry_price - sl_price, 0.5 * bar_atr)
+                        level = float(sig.get("level_price", closes[i]))
+
+                        if trade_dir == "BUY":
+                            entry_price = closes[i] + (spread / 2.0) + slip
+                            sweep_ext = float(sig.get("sweep_price_extreme", level - 0.2 * bar_atr))
+                            sl_price = sweep_ext - (self.sl_buffer_atr * bar_atr)
+                            tp_price = entry_price + (self.target_atr_x * bar_atr)
+                            risk_per_unit = max(entry_price - sl_price, 0.5 * bar_atr)
+                        else:
+                            entry_price = closes[i] - (spread / 2.0) - slip
+                            sweep_ext = float(sig.get("sweep_price_extreme", level + 0.2 * bar_atr))
+                            sl_price = sweep_ext + (self.sl_buffer_atr * bar_atr)
+                            tp_price = entry_price - (self.target_atr_x * bar_atr)
+                            risk_per_unit = max(sl_price - entry_price, 0.5 * bar_atr)
+
                         risk_capital = current_capital * (self.risk_per_trade_pct / 100.0)
-                        pos_size = risk_capital / risk_per_unit
+                        pos_size = risk_capital / max(risk_per_unit, 1e-4)
 
                         trade_counter += 1
                         trade = TradeRecord(
                             trade_id=f"T_{trade_counter}_{i}",
                             instrument=inst,
                             entry_time=dt,
-                            direction="BUY",
+                            direction=trade_dir,
                             entry_price=entry_price,
                             stop_loss=sl_price,
                             take_profit=tp_price,
@@ -216,7 +255,13 @@ class BacktestEngine:
                         last_entry_bar = i
 
             # 3. Track daily/bar equity
-            unrealized_pnl = sum((closes[i] - t.entry_price) * t.position_size for t in active_trades)
+            unrealized_pnl = 0.0
+            for t in active_trades:
+                if t.direction == "BUY":
+                    unrealized_pnl += (closes[i] - t.entry_price) * t.position_size
+                else:
+                    unrealized_pnl += (t.entry_price - closes[i]) * t.position_size
+
             total_equity = current_capital + unrealized_pnl
             peak_equity = max(peak_equity, total_equity)
             drawdown = max(0.0, peak_equity - total_equity)
@@ -237,7 +282,7 @@ class BacktestEngine:
             t.exit_price = closes[-1]
             t.exit_time = pd.Timestamp(timestamps[-1]).to_pydatetime()
             t.exit_reason = "END_OF_DATA"
-            price_diff = t.exit_price - t.entry_price
+            price_diff = (t.exit_price - t.entry_price) if t.direction == "BUY" else (t.entry_price - t.exit_price)
             t.pnl_gross = price_diff * t.position_size
             cost = (spread * t.position_size) + (2 * self.commission_per_order)
             t.costs_total = cost

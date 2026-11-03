@@ -1194,10 +1194,16 @@ if barstate.islast and bad_opens + bad_stamps + bad_levels > 0
 // ---------------------------------------- Input Warnings --------------------------------------------------
 
 // ====================================================================================================
-// ============================= MODULE C, D, E, F, G, H EXTENSIONS ===================================
+// ============================= MODULE C, D, E, F, G, H, I EXTENSIONS ===================================
 // ====================================================================================================
 
 // ---------------------------------------- Inputs: Extensions ----------------------------------------
+var g_HTF = "Liquidity Points Reference (Daily, Weekly, Monthly)"
+show_htf_levels = input.bool(true, "Show PDH/PDL, PWH/PWL, PMH/PML", group = g_HTF)
+show_htf_confluence = input.bool(true, "Highlight Confluence Clusters", group = g_HTF)
+show_checklist = input.bool(true, "Display Section 6 Quick Checklist Table", group = g_HTF)
+chk_table_loc = input.string("Top Right", "Checklist Widget Position", options = ["Top Right", "Bottom Right", "Bottom Left", "Top Left"], group = g_HTF)
+
 var g_DB = "Liquidity: Double Bottoms"
 show_db = input.bool(true, "Enable Double Bottom Detection", group = g_DB)
 db_k = input.int(3, "Swing Confirmation Lookback (k)", minval = 2, maxval = 10, group = g_DB)
@@ -1241,6 +1247,22 @@ xgb_table_loc = input.string("Bottom Left", "XGBoost Widget Position", options =
 
 // ---------------------------------------- Technical Computations ----------------------------------------
 ext_atr = ta.atr(db_atr_len)
+
+// HTF Designated Liquidity Points (No Lookahead)
+pdh_val = request.security(syminfo.tickerid, "D", high[1], lookahead = barmerge.lookahead_off)
+pdl_val = request.security(syminfo.tickerid, "D", low[1], lookahead = barmerge.lookahead_off)
+pwh_val = request.security(syminfo.tickerid, "W", high[1], lookahead = barmerge.lookahead_off)
+pwl_val = request.security(syminfo.tickerid, "W", low[1], lookahead = barmerge.lookahead_off)
+pmh_val = request.security(syminfo.tickerid, "M", high[1], lookahead = barmerge.lookahead_off)
+pml_val = request.security(syminfo.tickerid, "M", low[1], lookahead = barmerge.lookahead_off)
+
+// Plot HTF designated liquidity points according to PDF Section 2 & 4
+plot(show_htf_levels ? pdh_val : na, "PDH (Buy-side)", color = color.red, style = plot.style_circles, linewidth = 1)
+plot(show_htf_levels ? pdl_val : na, "PDL (Sell-side)", color = color.green, style = plot.style_circles, linewidth = 1)
+plot(show_htf_levels ? pwh_val : na, "PWH (Buy-side)", color = color.purple, style = plot.style_linebr, linewidth = 2)
+plot(show_htf_levels ? pwl_val : na, "PWL (Sell-side)", color = color.blue, style = plot.style_linebr, linewidth = 2)
+plot(show_htf_levels ? pmh_val : na, "PMH (Buy-side)", color = color.maroon, style = plot.style_line, linewidth = 3)
+plot(show_htf_levels ? pml_val : na, "PML (Sell-side)", color = color.teal, style = plot.style_line, linewidth = 3)
 
 // Swing Low Detection with strict k confirmation (no look-ahead)
 f_is_swing_low(int k) =>
@@ -1363,5 +1385,23 @@ if show_xgb_table and barstate.islast
     table.cell(xgb_tbl, 0, 3, "Confluence State", text_size = size.small, text_color = chart.fg_color)
     table.cell(xgb_tbl, 1, 3, use_confluence_filter ? "Strict" : "Standard", text_size = size.small, text_color = chart.fg_color)
 
+// ---------------------------------------- Section 6 Quick Checklist Table ----------------------------------------
+if show_checklist and barstate.islast
+    var table chk_tbl = table.new(get_table_pos(chk_table_loc), 2, 6, chart.bg_color, chart.fg_color, 2, chart.fg_color, 1)
+    table.cell(chk_tbl, 0, 0, "PDF Liquidity Checklist", bgcolor = color.rgb(103, 58, 183, 40), text_size = size.small, text_color = chart.fg_color)
+    table.cell(chk_tbl, 1, 0, "Status", bgcolor = color.rgb(103, 58, 183, 40), text_size = size.small, text_color = chart.fg_color)
+    table.cell(chk_tbl, 0, 1, "1. Levels Marked", text_size = size.small, text_color = chart.fg_color)
+    table.cell(chk_tbl, 1, 1, "PDH/PDL, PWH/PWL, PMH/PML", bgcolor = color.rgb(76, 175, 80, 40), text_size = size.small, text_color = chart.fg_color)
+    table.cell(chk_tbl, 0, 2, "2. Nearest Levels", text_size = size.small, text_color = chart.fg_color)
+    table.cell(chk_tbl, 1, 2, "Above: " + str.tostring(pdh_val, format.mintick) + " | Below: " + str.tostring(pdl_val, format.mintick), text_size = size.small, text_color = chart.fg_color)
+    table.cell(chk_tbl, 0, 3, "3. Swept This Session?", text_size = size.small, text_color = chart.fg_color)
+    table.cell(chk_tbl, 1, 3, (high >= pdh_val or low <= pdl_val) ? "Yes (Swept)" : "No (Untouched)", text_size = size.small, text_color = chart.fg_color)
+    table.cell(chk_tbl, 0, 4, "4. Multiple Zone Cluster?", text_size = size.small, text_color = chart.fg_color)
+    table.cell(chk_tbl, 1, 4, math.abs(pdh_val - pwh_val) <= 0.5 * ext_atr ? "Confluence Cluster!" : "Separated", text_size = size.small, text_color = chart.fg_color)
+    table.cell(chk_tbl, 0, 5, "5. Reading Price Behavior", text_size = size.small, text_color = chart.fg_color)
+    table.cell(chk_tbl, 1, 5, (low < pdl_val and close > pdl_val) ? "Sweep Reversal" : ((close > pdh_val) ? "Acceptance" : "Reaction / Magnet"), bgcolor = color.rgb(33, 150, 243, 40), text_size = size.small, text_color = chart.fg_color)
+
 // ---------------------------------------- Alert Conditions ----------------------------------------
 alertcondition(low < active_zone_low and close > active_zone_low, title = "Stop-Hunt Reclaim (Long)", message = "Stop-Hunt Reclaim Detected on {{ticker}} at {{close}}")
+alertcondition(high > pdh_val and close < pdh_val, title = "PDH Buy-side Sweep (Short)", message = "PDH Buy-side Sweep Reversal on {{ticker}} at {{close}}")
+alertcondition(low < pdl_val and close > pdl_val, title = "PDL Sell-side Sweep (Long)", message = "PDL Sell-side Sweep Reversal on {{ticker}} at {{close}}")

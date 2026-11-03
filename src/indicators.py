@@ -116,7 +116,7 @@ def compute_previous_day_levels(df: pd.DataFrame, tz_name: str = "America/New_Yo
     )
     merged.index = df.index
 
-    # Forward fill any initial missing values
+    # Forward/backward fill any initial missing values
     merged["pdh"] = merged["pdh"].bfill()
     merged["pdl"] = merged["pdl"].bfill()
     merged["pdc"] = merged["pdc"].bfill()
@@ -124,9 +124,88 @@ def compute_previous_day_levels(df: pd.DataFrame, tz_name: str = "America/New_Yo
     return merged[["pdh", "pdl", "pdc"]]
 
 
+def compute_previous_week_levels(df: pd.DataFrame, tz_name: str = "America/New_York") -> pd.DataFrame:
+    """
+    Computes Prior Week High (PWH), Prior Week Low (PWL), and Prior Week Close (PWC).
+    Refreshed at weekly open; strictly shifted by 1 week to eliminate look-ahead.
+    """
+    ts = df["timestamp"]
+    if ts.dt.tz is None:
+        ts_local = ts.dt.tz_localize("UTC").dt.tz_convert(tz_name)
+    else:
+        ts_local = ts.dt.tz_convert(tz_name)
+
+    # ISO Year-Week string (e.g. '2025-01')
+    week_keys = ts_local.dt.strftime("%G-%V")
+
+    weekly_stats = df.groupby(week_keys).agg(
+        w_high=("high", "max"),
+        w_low=("low", "min"),
+        w_close=("close", "last")
+    ).reset_index().rename(columns={"timestamp": "week_period"})
+
+    weekly_stats["pwh"] = weekly_stats["w_high"].shift(1)
+    weekly_stats["pwl"] = weekly_stats["w_low"].shift(1)
+    weekly_stats["pwc"] = weekly_stats["w_close"].shift(1)
+
+    merged = pd.merge(
+        pd.DataFrame({"week_period": week_keys}, index=df.index),
+        weekly_stats[["week_period", "pwh", "pwl", "pwc"]],
+        on="week_period",
+        how="left"
+    )
+    merged.index = df.index
+
+    merged["pwh"] = merged["pwh"].bfill()
+    merged["pwl"] = merged["pwl"].bfill()
+    merged["pwc"] = merged["pwc"].bfill()
+
+    return merged[["pwh", "pwl", "pwc"]]
+
+
+def compute_previous_month_levels(df: pd.DataFrame, tz_name: str = "America/New_York") -> pd.DataFrame:
+    """
+    Computes Prior Month High (PMH), Prior Month Low (PML), and Prior Month Close (PMC).
+    Refreshed on the first trading day of the month; strictly shifted by 1 month to eliminate look-ahead.
+    """
+    ts = df["timestamp"]
+    if ts.dt.tz is None:
+        ts_local = ts.dt.tz_localize("UTC").dt.tz_convert(tz_name)
+    else:
+        ts_local = ts.dt.tz_convert(tz_name)
+
+    # Year-Month string (e.g. '2025-01')
+    month_keys = ts_local.dt.strftime("%Y-%m")
+
+    monthly_stats = df.groupby(month_keys).agg(
+        m_high=("high", "max"),
+        m_low=("low", "min"),
+        m_close=("close", "last")
+    ).reset_index().rename(columns={"timestamp": "month_period"})
+
+    monthly_stats["pmh"] = monthly_stats["m_high"].shift(1)
+    monthly_stats["pml"] = monthly_stats["m_low"].shift(1)
+    monthly_stats["pmc"] = monthly_stats["m_close"].shift(1)
+
+    merged = pd.merge(
+        pd.DataFrame({"month_period": month_keys}, index=df.index),
+        monthly_stats[["month_period", "pmh", "pml", "pmc"]],
+        on="month_period",
+        how="left"
+    )
+    merged.index = df.index
+
+    merged["pmh"] = merged["pmh"].bfill()
+    merged["pml"] = merged["pml"].bfill()
+    merged["pmc"] = merged["pmc"].bfill()
+
+    return merged[["pmh", "pml", "pmc"]]
+
+
 def add_core_indicators(df: pd.DataFrame, atr_period: int = 14, tz_name: str = "America/New_York") -> pd.DataFrame:
     """
-    Enriches an OHLCV dataframe with all core market indicators.
+    Enriches an OHLCV dataframe with all core market indicators and HTF liquidity points:
+    ATR, anatomy ratios, returns, volatility, volume, and PDH/PDL, PWH/PWL, PMH/PML.
     """
     df_out = df.copy()
 
@@ -146,15 +225,31 @@ def add_core_indicators(df: pd.DataFrame, atr_period: int = 14, tz_name: str = "
     # 4. Relative volume
     df_out["relative_volume"] = compute_relative_volume(df_out["volume"])
 
-    # 5. Prior Day Levels
+    # 5. Prior Day Levels (PDH, PDL, PDC)
     pdl_df = compute_previous_day_levels(df_out, tz_name=tz_name)
     df_out["pdh"] = pdl_df["pdh"]
     df_out["pdl"] = pdl_df["pdl"]
     df_out["pdc"] = pdl_df["pdc"]
 
-    # 6. Distances to PDH/PDL in ATR units
+    # 6. Prior Week Levels (PWH, PWL, PWC)
+    pwl_df = compute_previous_week_levels(df_out, tz_name=tz_name)
+    df_out["pwh"] = pwl_df["pwh"]
+    df_out["pwl"] = pwl_df["pwl"]
+    df_out["pwc"] = pwl_df["pwc"]
+
+    # 7. Prior Month Levels (PMH, PML, PMC)
+    pml_df = compute_previous_month_levels(df_out, tz_name=tz_name)
+    df_out["pmh"] = pml_df["pmh"]
+    df_out["pml"] = pml_df["pml"]
+    df_out["pmc"] = pml_df["pmc"]
+
+    # 8. Distances to HTF Liquidity Points in ATR units
     atr_safe = df_out["atr"].clip(lower=1e-6)
     df_out["dist_to_pdh_atr"] = (df_out["pdh"] - df_out["close"]) / atr_safe
     df_out["dist_to_pdl_atr"] = (df_out["close"] - df_out["pdl"]) / atr_safe
+    df_out["dist_to_pwh_atr"] = (df_out["pwh"] - df_out["close"]) / atr_safe
+    df_out["dist_to_pwl_atr"] = (df_out["close"] - df_out["pwl"]) / atr_safe
+    df_out["dist_to_pmh_atr"] = (df_out["pmh"] - df_out["close"]) / atr_safe
+    df_out["dist_to_pml_atr"] = (df_out["close"] - df_out["pml"]) / atr_safe
 
     return df_out

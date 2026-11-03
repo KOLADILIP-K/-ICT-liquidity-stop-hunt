@@ -60,11 +60,12 @@ class ModelTrainer:
         embargo_bars: int = 16
     ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """
-        Strict chronological train (60%), val (20%), test (20%) split with embargo gap.
+        Strict chronological train (80%), val (10%), test (10%) split with embargo gap.
+        Ensures 80% training data without lookahead bias.
         """
         n = len(df)
-        train_ratio = self.config.get("training", {}).get("train_ratio", 0.60)
-        val_ratio = self.config.get("training", {}).get("val_ratio", 0.20)
+        train_ratio = self.config.get("training", {}).get("train_ratio", 0.80)
+        val_ratio = self.config.get("training", {}).get("val_ratio", 0.10)
 
         train_end = int(n * train_ratio)
         val_start = min(n, train_end + embargo_bars)
@@ -192,47 +193,52 @@ class ModelTrainer:
         feature_df: pd.DataFrame
     ) -> Dict[str, Any]:
         """
-        Runs rigorous transfer tests:
+        Runs rigorous transfer tests across all 4 instruments and asset classes:
         1. Train on Gold -> Test on Silver
         2. Train on Silver -> Test on Gold
+        3. Train on BTC -> Test on ETH
+        4. Train on ETH -> Test on BTC
+        5. Train on Metals -> Test on Crypto
+        6. Train on Crypto -> Test on Metals
         """
         df = self.prepare_data(feature_df)
         seed = self.config.get("general", {}).get("random_seed", 42)
 
         gold_df = df[df["instrument"].str.contains("XAU", case=False, na=False)].sort_values("timestamp")
         silver_df = df[df["instrument"].str.contains("XAG", case=False, na=False)].sort_values("timestamp")
+        btc_df = df[df["instrument"].str.contains("BTC", case=False, na=False)].sort_values("timestamp")
+        eth_df = df[df["instrument"].str.contains("ETH", case=False, na=False)].sort_values("timestamp")
+
+        metals_df = pd.concat([gold_df, silver_df], ignore_index=True).sort_values("timestamp")
+        crypto_df = pd.concat([btc_df, eth_df], ignore_index=True).sort_values("timestamp")
 
         results = {}
 
-        if len(gold_df) > 30 and len(silver_df) > 30:
-            X_gold = gold_df[self.feature_cols].values
-            y_gold = gold_df["target"].values
-            X_silver = silver_df[self.feature_cols].values
-            y_silver = silver_df["target"].values
+        def _train_eval(train_subset, test_subset, name):
+            if len(train_subset) < 20 or len(test_subset) < 20:
+                return
+            X_tr = train_subset[self.feature_cols].values
+            y_tr = train_subset["target"].values
+            X_te = test_subset[self.feature_cols].values
+            y_te = test_subset["target"].values
 
-            # Train on Gold -> Test on Silver
-            scale_g = float(np.sum(y_gold == 0) / max(np.sum(y_gold == 1), 1))
+            scale = float(np.sum(y_tr == 0) / max(np.sum(y_tr == 1), 1))
             if self.has_xgboost:
-                model_gold = XGBClassifier(n_estimators=100, learning_rate=0.05, max_depth=4, scale_pos_weight=scale_g, random_state=seed)
-                model_gold.fit(X_gold, y_gold)
+                m = XGBClassifier(n_estimators=100, learning_rate=0.05, max_depth=4, scale_pos_weight=scale, random_state=seed)
+                m.fit(X_tr, y_tr)
             else:
-                model_gold = HistGradientBoostingClassifier(max_iter=100, learning_rate=0.05, max_depth=4, random_state=seed)
-                model_gold.fit(X_gold, y_gold, sample_weight=np.where(y_gold == 1, scale_g, 1.0))
+                m = HistGradientBoostingClassifier(max_iter=100, learning_rate=0.05, max_depth=4, random_state=seed)
+                m.fit(X_tr, y_tr, sample_weight=np.where(y_tr == 1, scale, 1.0))
 
-            prob_silver = model_gold.predict_proba(X_silver)[:, 1]
-            results["train_Gold_test_Silver"] = evaluate_binary_predictions(y_silver, prob_silver)
+            probs = m.predict_proba(X_te)[:, 1]
+            results[name] = evaluate_binary_predictions(y_te, probs)
 
-            # Train on Silver -> Test on Gold
-            scale_s = float(np.sum(y_silver == 0) / max(np.sum(y_silver == 1), 1))
-            if self.has_xgboost:
-                model_silver = XGBClassifier(n_estimators=100, learning_rate=0.05, max_depth=4, scale_pos_weight=scale_s, random_state=seed)
-                model_silver.fit(X_silver, y_silver)
-            else:
-                model_silver = HistGradientBoostingClassifier(max_iter=100, learning_rate=0.05, max_depth=4, random_state=seed)
-                model_silver.fit(X_silver, y_silver, sample_weight=np.where(y_silver == 1, scale_s, 1.0))
-
-            prob_gold = model_silver.predict_proba(X_gold)[:, 1]
-            results["train_Silver_test_Gold"] = evaluate_binary_predictions(y_gold, prob_gold)
+        _train_eval(gold_df, silver_df, "train_Gold_test_Silver")
+        _train_eval(silver_df, gold_df, "train_Silver_test_Gold")
+        _train_eval(btc_df, eth_df, "train_BTC_test_ETH")
+        _train_eval(eth_df, btc_df, "train_ETH_test_BTC")
+        _train_eval(metals_df, crypto_df, "train_Metals_test_Crypto")
+        _train_eval(crypto_df, metals_df, "train_Crypto_test_Metals")
 
         return results
 

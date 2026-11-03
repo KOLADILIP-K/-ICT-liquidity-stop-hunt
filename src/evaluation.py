@@ -76,7 +76,7 @@ def compare_instrument_metrics(
     threshold: float = 0.50
 ) -> Dict[str, Dict[str, Any]]:
     """
-    Evaluates model performance across instruments (Combined, Gold only, Silver only).
+    Evaluates model performance across instruments (Combined, Gold, Silver, BTC, ETH).
     """
     results = {}
     
@@ -87,22 +87,19 @@ def compare_instrument_metrics(
         threshold=threshold
     )
 
-    # Gold (XAUUSD)
-    gold_mask = eval_df["instrument"].str.contains("XAU", case=False, na=False)
-    if gold_mask.sum() > 0:
-        results["XAUUSD"] = evaluate_binary_predictions(
-            eval_df.loc[gold_mask, "y_true"].values,
-            eval_df.loc[gold_mask, "y_prob"].values,
-            threshold=threshold
-        )
-
-    # Silver (XAGUSD)
-    silver_mask = eval_df["instrument"].str.contains("XAG", case=False, na=False)
-    if silver_mask.sum() > 0:
-        results["XAGUSD"] = evaluate_binary_predictions(
-            eval_df.loc[silver_mask, "y_true"].values,
-            eval_df.loc[silver_mask, "y_prob"].values,
-            threshold=threshold
-        )
+    # Per-instrument breakdown
+    for inst, mask_term in [
+        ("XAUUSD", "XAU"),
+        ("XAGUSD", "XAG"),
+        ("BTCUSD", "BTC"),
+        ("ETHUSD", "ETH"),
+    ]:
+        mask = eval_df["instrument"].str.contains(mask_term, case=False, na=False)
+        if mask.sum() > 0:
+            results[inst] = evaluate_binary_predictions(
+                eval_df.loc[mask, "y_true"].values,
+                eval_df.loc[mask, "y_prob"].values,
+                threshold=threshold
+            )
 
     return results
