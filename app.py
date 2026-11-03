@@ -12,6 +12,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import streamlit as st
+import streamlit.components.v1 as components
 import yaml
 
 from src.data_loader import DataLoader
@@ -341,112 +342,423 @@ elif page == "Liquidity Points Reference (PDF)":
 # PAGE 2: MARKET ANALYSIS & CHARTS
 # ==============================================================================
 elif page == "Market Analysis & Charts":
-    st.title("Interactive Candlestick & Liquidity Visualizer")
-    st.caption("Visualizes ICT Killzones, Session Liquidity, Double/Triple Bottoms, and Sweep Reclaim Markers.")
+    st.title("Interactive TradingView Charts & Liquidity Visualizer")
+    st.caption("Professional TradingView charting suite with local stop-hunt markers, designated HTF levels, and live feeds.")
 
     df_inst = data_dict.get(selected_inst, pd.DataFrame())
     if df_inst.empty:
         st.error(f"No data available for {selected_inst}.")
     else:
-        # Display slice
-        chart_bars = st.slider("Candles to Display", min_value=50, max_value=500, value=150, step=25)
-        df_slice = df_inst.iloc[-chart_bars:].copy()
-
-        fig = make_subplots(
-            rows=2, cols=1,
-            shared_xaxes=True,
-            vertical_spacing=0.04,
-            row_heights=[0.8, 0.2]
+        chart_mode = st.radio(
+            "Chart Display Engine",
+            [
+                "TradingView Lightweight (Model Data & HTF Levels)",
+                "TradingView Advanced Terminal (Live Feed & Full Drawing Suite)",
+                "Plotly Analytics Visualizer"
+            ],
+            horizontal=True
         )
 
-        # Candlesticks
-        fig.add_trace(go.Candlestick(
-            x=df_slice["timestamp"],
-            open=df_slice["open"],
-            high=df_slice["high"],
-            low=df_slice["low"],
-            close=df_slice["close"],
-            name=selected_inst,
-            increasing_line_color="#00E676",
-            decreasing_line_color="#FF1744"
-        ), row=1, col=1)
+        # ----------------------------------------------------------------------
+        # MODE 1: TRADINGVIEW LIGHTWEIGHT CHARTS (LOCAL DATA + HTF LEVELS + ML SIGNALS)
+        # ----------------------------------------------------------------------
+        if chart_mode == "TradingView Lightweight (Model Data & HTF Levels)":
+            c_col1, c_col2, c_col3, c_col4 = st.columns([2, 1, 1, 1])
+            with c_col1:
+                chart_bars = st.slider("Candles to Display", min_value=50, max_value=800, value=250, step=25)
+            with c_col2:
+                show_htf_on_tv = st.checkbox("Show HTF Levels (PDF)", value=True)
+            with c_col3:
+                show_markers_on_tv = st.checkbox("Show Sweep Markers", value=True)
+            with c_col4:
+                show_vol_on_tv = st.checkbox("Show Volume", value=True)
 
-        # Volume
-        vol_colors = ["#00E676" if c >= o else "#FF1744" for c, o in zip(df_slice["close"], df_slice["open"])]
-        fig.add_trace(go.Bar(
-            x=df_slice["timestamp"],
-            y=df_slice["volume"],
-            name="Volume",
-            marker_color=vol_colors,
-            opacity=0.6
-        ), row=2, col=1)
+            df_slice = df_inst.iloc[-chart_bars:].copy()
 
-        # Overlays: Filter events in slice
-        slice_start = df_slice["timestamp"].iloc[0]
-        slice_end = df_slice["timestamp"].iloc[-1]
-        
-        inst_preds = predictions_df[predictions_df["instrument"] == selected_inst] if not predictions_df.empty else pd.DataFrame()
-        if not inst_preds.empty and "timestamp" in inst_preds.columns:
-            inst_preds["ts"] = pd.to_datetime(inst_preds["timestamp"], utc=True)
-            slice_events = inst_preds[(inst_preds["ts"] >= slice_start) & (inst_preds["ts"] <= slice_end)]
+            # Prepare candle & volume data
+            candles_payload = []
+            volumes_payload = []
+            for _, r in df_slice.iterrows():
+                ts = int(pd.to_datetime(r["timestamp"]).timestamp())
+                o = float(r["open"])
+                h = float(r["high"])
+                l = float(r["low"])
+                c = float(r["close"])
+                v = float(r.get("volume", 0))
+                candles_payload.append({"time": ts, "open": o, "high": h, "low": l, "close": c})
+                vol_col = "rgba(38, 166, 154, 0.45)" if c >= o else "rgba(239, 83, 80, 0.45)"
+                volumes_payload.append({"time": ts, "value": v, "color": vol_col})
 
-            for _, ev in slice_events.iterrows():
-                # Level line
-                lp = ev["level_price"]
-                fig.add_hline(
-                    y=lp,
-                    line_dash="dot",
-                    line_color="#00E5FF",
-                    annotation_text=f"{ev['pattern_type']} ({lp:.2f})",
-                    annotation_position="bottom right",
-                    row=1, col=1
-                )
+            # Prepare markers
+            markers_payload = []
+            slice_start = df_slice["timestamp"].iloc[0]
+            slice_end = df_slice["timestamp"].iloc[-1]
+            inst_preds = predictions_df[predictions_df["instrument"] == selected_inst] if not predictions_df.empty else pd.DataFrame()
+            
+            if show_markers_on_tv and not inst_preds.empty and "timestamp" in inst_preds.columns:
+                inst_preds["ts_dt"] = pd.to_datetime(inst_preds["timestamp"], utc=True)
+                slice_events = inst_preds[(inst_preds["ts_dt"] >= slice_start) & (inst_preds["ts_dt"] <= slice_end)]
+                for _, ev in slice_events.iterrows():
+                    ts = int(pd.to_datetime(ev["timestamp"]).timestamp())
+                    is_hunt = str(ev.get("label", "")) == "1"
+                    prob = float(ev.get("hunt_probability", 0))
+                    direction = str(ev.get("direction", "bullish")).lower()
+                    pos = "belowBar" if direction == "bullish" else "aboveBar"
+                    shape = "arrowUp" if direction == "bullish" else "arrowDown"
+                    col = "#00E676" if is_hunt else "#FF9100"
+                    tag = "★ Hunt" if is_hunt else "Sweep"
+                    markers_payload.append({
+                        "time": ts,
+                        "position": pos,
+                        "color": col,
+                        "shape": shape,
+                        "text": f"{tag} {prob*100:.0f}%"
+                    })
+            markers_payload = sorted(markers_payload, key=lambda x: x["time"])
 
-                # Sweep marker
-                is_hunt = str(ev.get("label", "")) == "1"
-                marker_col = "#00E676" if is_hunt else "#FF9100"
-                marker_symbol = "triangle-up" if is_hunt else "x"
-                fig.add_trace(go.Scatter(
-                    x=[ev["ts"]],
-                    y=[lp],
-                    mode="markers+text",
-                    marker=dict(symbol=marker_symbol, size=12, color=marker_col),
-                    text=[f"Prob: {ev.get('hunt_probability', 0)*100:.0f}%"],
-                    textposition="bottom center",
-                    name=f"Event {ev.get('event_id', '')}",
-                    showlegend=False
-                ), row=1, col=1)
+            # Prepare HTF Price Lines (PDF Section 2 & 4)
+            htf_payload = []
+            if show_htf_on_tv:
+                last_bar = df_slice.iloc[-1]
+                defs = [
+                    ("PDH (Buy-side)", last_bar.get("pdh"), "#EF5350", "dotted", 1),
+                    ("PDL (Sell-side)", last_bar.get("pdl"), "#26A69A", "dotted", 1),
+                    ("PWH (Buy-side)", last_bar.get("pwh"), "#AB47BC", "dashed", 2),
+                    ("PWL (Sell-side)", last_bar.get("pwl"), "#42A5F5", "dashed", 2),
+                    ("PMH (Buy-side)", last_bar.get("pmh"), "#E91E63", "solid", 2),
+                    ("PML (Sell-side)", last_bar.get("pml"), "#00B0FF", "solid", 2),
+                ]
+                for name, val, col, style, width in defs:
+                    if val is not None and not np.isnan(val):
+                        htf_payload.append({
+                            "name": name,
+                            "price": float(val),
+                            "color": col,
+                            "style": style,
+                            "width": width
+                        })
 
-        # Add HTF Designated Liquidity Points from latest bar of slice (PDF Section 2 & 4)
-        last_bar = df_slice.iloc[-1]
-        htf_levels_to_plot = [
-            ("PDH (Buy-side)", last_bar.get("pdh"), "#EF5350", "dot"),
-            ("PDL (Sell-side)", last_bar.get("pdl"), "#26A69A", "dot"),
-            ("PWH (Buy-side)", last_bar.get("pwh"), "#AB47BC", "dash"),
-            ("PWL (Sell-side)", last_bar.get("pwl"), "#42A5F5", "dash"),
-            ("PMH (Buy-side)", last_bar.get("pmh"), "#E91E63", "solid"),
-            ("PML (Sell-side)", last_bar.get("pml"), "#00B0FF", "solid"),
-        ]
-        for name, val, col, style in htf_levels_to_plot:
-            if val is not None and not np.isnan(val):
-                fig.add_hline(
-                    y=val,
-                    line_dash=style,
-                    line_color=col,
-                    annotation_text=f"{name}: {val:.2f}",
-                    annotation_position="top left",
-                    row=1, col=1
-                )
+            # Build HTML template for TradingView Lightweight Charts
+            tv_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8" />
+                <style>
+                    body {{
+                        margin: 0;
+                        padding: 0;
+                        background-color: #131722;
+                        font-family: -apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif;
+                        color: #D1D4DC;
+                        overflow: hidden;
+                    }}
+                    #chart-wrapper {{
+                        position: relative;
+                        width: 100%;
+                        height: 680px;
+                    }}
+                    #tv-chart {{
+                        width: 100%;
+                        height: 100%;
+                    }}
+                    #legend {{
+                        position: absolute;
+                        left: 14px;
+                        top: 12px;
+                        z-index: 10;
+                        font-size: 13px;
+                        background: rgba(19, 23, 34, 0.85);
+                        padding: 6px 12px;
+                        border-radius: 6px;
+                        border: 1px solid #2A2E39;
+                        pointer-events: none;
+                    }}
+                    .ctrl-bar {{
+                        position: absolute;
+                        right: 14px;
+                        top: 12px;
+                        z-index: 10;
+                        display: flex;
+                        gap: 8px;
+                    }}
+                    .ctrl-btn {{
+                        background: #1E222D;
+                        color: #00E5FF;
+                        border: 1px solid #2A2E39;
+                        border-radius: 4px;
+                        padding: 4px 10px;
+                        font-size: 11px;
+                        font-weight: bold;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                    }}
+                    .ctrl-btn:hover {{
+                        background: #2A2E39;
+                        color: #ffffff;
+                    }}
+                </style>
+                <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+            </head>
+            <body>
+                <div id="chart-wrapper">
+                    <div id="legend"><strong>{selected_inst} · 15m</strong> | Hover over candles to inspect values</div>
+                    <div class="ctrl-bar">
+                        <button class="ctrl-btn" onclick="fitView()">⛶ Auto-Fit</button>
+                        <button class="ctrl-btn" onclick="toggleCrosshair()">✛ Crosshair</button>
+                    </div>
+                    <div id="tv-chart"></div>
+                </div>
 
-        fig.update_layout(
-            template="plotly_dark",
-            paper_bgcolor="#0E1117",
-            plot_bgcolor="#161A22",
-            height=700,
-            xaxis_rangeslider_visible=False,
-            margin=dict(l=20, r=20, t=30, b=20)
-        )
-        st.plotly_chart(fig, use_container_width=True)
+                <script>
+                    const container = document.getElementById('tv-chart');
+                    const legend = document.getElementById('legend');
+                    const symbol = "{selected_inst}";
+
+                    const chart = LightweightCharts.createChart(container, {{
+                        width: container.clientWidth,
+                        height: container.clientHeight,
+                        layout: {{
+                            background: {{ type: 'solid', color: '#131722' }},
+                            textColor: '#D1D4DC',
+                            fontSize: 12,
+                        }},
+                        grid: {{
+                            vertLines: {{ color: '#1E222D' }},
+                            horzLines: {{ color: '#1E222D' }},
+                        }},
+                        crosshair: {{
+                            mode: LightweightCharts.CrosshairMode.Normal,
+                        }},
+                        rightPriceScale: {{
+                            borderColor: '#2A2E39',
+                            autoScale: true,
+                            scaleMargins: {{
+                                top: 0.1,
+                                bottom: 0.15,
+                            }},
+                        }},
+                        timeScale: {{
+                            borderColor: '#2A2E39',
+                            timeVisible: true,
+                            secondsVisible: false,
+                        }},
+                        handleScroll: {{
+                            vertTouchDrag: true,
+                        }},
+                    }});
+
+                    // Candlestick Series
+                    const candleSeries = chart.addCandlestickSeries({{
+                        upColor: '#26A69A',
+                        downColor: '#EF5350',
+                        borderVisible: false,
+                        wickUpColor: '#26A69A',
+                        wickDownColor: '#EF5350',
+                    }});
+                    const candleData = {json.dumps(candles_payload)};
+                    candleSeries.setData(candleData);
+
+                    // Volume Series
+                    const showVol = {str(show_vol_on_tv).lower()};
+                    let volumeSeries = null;
+                    if (showVol) {{
+                        volumeSeries = chart.addHistogramSeries({{
+                            priceFormat: {{ type: 'volume' }},
+                            priceScaleId: '', // Overlay
+                        }});
+                        volumeSeries.priceScale().applyOptions({{
+                            scaleMargins: {{
+                                top: 0.82,
+                                bottom: 0.0,
+                            }},
+                        }});
+                        volumeSeries.setData({json.dumps(volumes_payload)});
+                    }}
+
+                    // Markers for sweeps & stop-hunts
+                    const markersData = {json.dumps(markers_payload)};
+                    if (markersData && markersData.length > 0) {{
+                        candleSeries.setMarkers(markersData);
+                    }}
+
+                    // Designated HTF Levels (PDF Reference)
+                    const htfLevels = {json.dumps(htf_payload)};
+                    htfLevels.forEach(lvl => {{
+                        let lStyle = LightweightCharts.LineStyle.Solid;
+                        if (lvl.style === 'dotted') lStyle = LightweightCharts.LineStyle.Dotted;
+                        if (lvl.style === 'dashed') lStyle = LightweightCharts.LineStyle.Dashed;
+
+                        candleSeries.createPriceLine({{
+                            price: lvl.price,
+                            color: lvl.color,
+                            lineWidth: lvl.width,
+                            lineStyle: lStyle,
+                            axisLabelVisible: true,
+                            title: lvl.name,
+                        }});
+                    }});
+
+                    // Auto-fit to content
+                    chart.timeScale().fitContent();
+
+                    // Dynamic Crosshair Legend Update
+                    chart.subscribeCrosshairMove(param => {{
+                        if (!param.time || !param.seriesData.get(candleSeries)) {{
+                            const lastC = candleData[candleData.length - 1];
+                            const col = lastC.close >= lastC.open ? '#26A69A' : '#EF5350';
+                            legend.innerHTML = `<strong>${{symbol}} · 15m</strong> | Latest: <span style="color:${{col}}">${{lastC.close.toFixed(3)}}</span>`;
+                            return;
+                        }}
+                        const data = param.seriesData.get(candleSeries);
+                        const volVal = (volumeSeries && param.seriesData.get(volumeSeries)) ? param.seriesData.get(volumeSeries).value.toLocaleString() : 'N/A';
+                        const col = data.close >= data.open ? '#26A69A' : '#EF5350';
+                        const chg = data.close - data.open;
+                        const chgPct = (chg / data.open) * 100;
+
+                        legend.innerHTML = `<strong>${{symbol}} · 15m</strong> | O: <span>${{data.open.toFixed(3)}}</span> H: <span>${{data.high.toFixed(3)}}</span> L: <span>${{data.low.toFixed(3)}}</span> C: <span style="color:${{col}}">${{data.close.toFixed(3)}}</span> | Chg: <span style="color:${{col}}">${{chg >= 0 ? '+' : ''}}${{chg.toFixed(3)}} (${{chgPct.toFixed(2)}}%)</span> | Vol: ${{volVal}}`;
+                    }});
+
+                    function fitView() {{
+                        chart.timeScale().fitContent();
+                    }}
+
+                    let crosshairNormal = true;
+                    function toggleCrosshair() {{
+                        crosshairNormal = !crosshairNormal;
+                        chart.applyOptions({{
+                            crosshair: {{
+                                mode: crosshairNormal ? LightweightCharts.CrosshairMode.Normal : LightweightCharts.CrosshairMode.Magnet
+                            }}
+                        }});
+                    }}
+
+                    window.addEventListener('resize', () => {{
+                        chart.applyOptions({{
+                            width: container.clientWidth,
+                            height: container.clientHeight
+                        }});
+                    }});
+                </script>
+            </body>
+            </html>
+            """
+            components.html(tv_html, height=700, scrolling=False)
+            st.info("💡 **TradingView Navigation Tips:** Click and drag left/right to pan horizontally. Scroll wheel to zoom. Click and drag the price scale on the right to stretch or compress vertically. Click **Auto-Fit** to reset.")
+
+        # ----------------------------------------------------------------------
+        # MODE 2: TRADINGVIEW ADVANCED TERMINAL (OFFICIAL REAL-TIME WIDGET)
+        # ----------------------------------------------------------------------
+        elif chart_mode == "TradingView Advanced Terminal (Live Feed & Full Drawing Suite)":
+            st.caption("Live broker feed with full TradingView drawing tools, indicators, multi-timeframe navigation, and fullscreen mode.")
+
+            # Symbol mapping
+            symbol_map = {
+                "XAUUSD": "OANDA:XAUUSD",
+                "XAGUSD": "OANDA:XAGUSD",
+                "BTCUSD": "BINANCE:BTCUSDT",
+                "ETHUSD": "BINANCE:ETHUSDT"
+            }
+            tv_sym = symbol_map.get(selected_inst, "OANDA:XAUUSD")
+
+            tv_adv_html = f"""
+            <!-- TradingView Widget BEGIN -->
+            <div class="tradingview-widget-container" style="height:720px;width:100%">
+              <div id="tradingview_advanced_widget" style="height:100%;width:100%"></div>
+              <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+              <script type="text/javascript">
+              new TradingView.widget({{
+                "autosize": true,
+                "symbol": "{tv_sym}",
+                "interval": "15",
+                "timezone": "America/New_York",
+                "theme": "dark",
+                "style": "1",
+                "locale": "en",
+                "toolbar_bg": "#131722",
+                "enable_publishing": false,
+                "allow_symbol_change": true,
+                "container_id": "tradingview_advanced_widget",
+                "details": true,
+                "hotlist": true,
+                "calendar": true,
+                "studies": [
+                  "STD;Average_True_Range",
+                  "STD;SMA"
+                ]
+              }});
+              </script>
+            </div>
+            <!-- TradingView Widget END -->
+            """
+            components.html(tv_adv_html, height=740, scrolling=False)
+
+        # ----------------------------------------------------------------------
+        # MODE 3: PLOTLY ANALYTICS VISUALIZER (STATISTICAL SUBPLOTS)
+        # ----------------------------------------------------------------------
+        else:
+            chart_bars = st.slider("Candles to Display", min_value=50, max_value=500, value=150, step=25)
+            df_slice = df_inst.iloc[-chart_bars:].copy()
+
+            fig = make_subplots(
+                rows=2, cols=1,
+                shared_xaxes=True,
+                vertical_spacing=0.04,
+                row_heights=[0.8, 0.2]
+            )
+
+            # Candlesticks
+            fig.add_trace(go.Candlestick(
+                x=df_slice["timestamp"],
+                open=df_slice["open"],
+                high=df_slice["high"],
+                low=df_slice["low"],
+                close=df_slice["close"],
+                name=selected_inst,
+                increasing_line_color="#00E676",
+                decreasing_line_color="#FF1744"
+            ), row=1, col=1)
+
+            # Volume
+            vol_colors = ["#00E676" if c >= o else "#FF1744" for c, o in zip(df_slice["close"], df_slice["open"])]
+            fig.add_trace(go.Bar(
+                x=df_slice["timestamp"],
+                y=df_slice["volume"],
+                name="Volume",
+                marker_color=vol_colors,
+                opacity=0.6
+            ), row=2, col=1)
+
+            # HTF Designated Liquidity Points
+            last_bar = df_slice.iloc[-1]
+            htf_levels_to_plot = [
+                ("PDH (Buy-side)", last_bar.get("pdh"), "#EF5350", "dot"),
+                ("PDL (Sell-side)", last_bar.get("pdl"), "#26A69A", "dot"),
+                ("PWH (Buy-side)", last_bar.get("pwh"), "#AB47BC", "dash"),
+                ("PWL (Sell-side)", last_bar.get("pwl"), "#42A5F5", "dash"),
+                ("PMH (Buy-side)", last_bar.get("pmh"), "#E91E63", "solid"),
+                ("PML (Sell-side)", last_bar.get("pml"), "#00B0FF", "solid"),
+            ]
+            for name, val, col, style in htf_levels_to_plot:
+                if val is not None and not np.isnan(val):
+                    fig.add_hline(
+                        y=val,
+                        line_dash=style,
+                        line_color=col,
+                        annotation_text=f"{name}: {val:.2f}",
+                        annotation_position="top left",
+                        row=1, col=1
+                    )
+
+            fig.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="#0E1117",
+                plot_bgcolor="#161A22",
+                height=700,
+                xaxis_rangeslider_visible=False,
+                margin=dict(l=20, r=20, t=30, b=20)
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
 # ==============================================================================
 # PAGE 3: LIQUIDITY SCANNER
