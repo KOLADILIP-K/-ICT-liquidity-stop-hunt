@@ -32,268 +32,266 @@
     "return_5",
     "return_20"
   ],
-  "train_samples": 15492,
-  "val_samples": 1921,
-  "test_samples": 1921,
-  "scale_pos_weight": 3.8142,
+  "train_samples": 15870,
+  "val_samples": 1968,
+  "test_samples": 1968,
+  "scale_pos_weight": 3.7686,
   "baseline_metrics": {
-    "n_samples": 1921,
-    "n_positives": 458,
-    "n_negatives": 1463,
-    "positive_rate": 0.2384,
+    "n_samples": 1968,
+    "n_positives": 475,
+    "n_negatives": 1493,
+    "positive_rate": 0.2414,
     "threshold": 0.5,
-    "accuracy": 0.6174,
-    "precision": 0.3721,
-    "recall": 0.8799,
-    "f1": 0.523,
-    "roc_auc": 0.7551,
-    "pr_auc": 0.418,
-    "brier_score": 0.2122,
+    "accuracy": 0.5884,
+    "precision": 0.3562,
+    "recall": 0.8737,
+    "f1": 0.5061,
+    "roc_auc": 0.7282,
+    "pr_auc": 0.3969,
+    "brier_score": 0.2317,
     "confusion_matrix": [
       [
-        783,
-        680
+        743,
+        750
       ],
       [
-        55,
-        403
+        60,
+        415
       ]
     ],
     "calibration": {
       "prob_true": [
-        0.0126,
-        0.1474,
-        0.2682,
-        0.3848,
-        0.4828
+        0.0157,
+        0.1401,
+        0.2918,
+        0.3504,
+        0.4435
       ],
       "prob_pred": [
-        0.0242,
-        0.3174,
-        0.5245,
-        0.6885,
-        0.8501
+        0.0247,
+        0.3067,
+        0.5191,
+        0.6963,
+        0.8507
       ]
     }
   },
   "test_metrics": {
     "Combined": {
-      "n_samples": 1921,
-      "n_positives": 458,
-      "n_negatives": 1463,
-      "positive_rate": 0.2384,
+      "n_samples": 1968,
+      "n_positives": 475,
+      "n_negatives": 1493,
+      "positive_rate": 0.2414,
       "threshold": 0.5,
-      "accuracy": 0.7574,
-      "precision": 0.4574,
-      "recall": 0.0939,
-      "f1": 0.1558,
-      "roc_auc": 0.7368,
-      "pr_auc": 0.4033,
-      "brier_score": 0.1614,
+      "accuracy": 0.7485,
+      "precision": 0.4167,
+      "recall": 0.1053,
+      "f1": 0.1681,
+      "roc_auc": 0.7173,
+      "pr_auc": 0.3801,
+      "brier_score": 0.1662,
       "confusion_matrix": [
         [
-          1412,
-          51
+          1423,
+          70
         ],
         [
-          415,
-          43
+          425,
+          50
         ]
       ],
       "calibration": {
         "prob_true": [
-          0.0938,
-          0.3642,
-          0.3776,
-          0.6667
+          0.0985,
+          0.3158,
+          0.3947,
+          0.4444
         ],
         "prob_pred": [
-          0.103,
-          0.3017,
-          0.4693,
-          0.6154
+          0.0846,
+          0.3025,
+          0.469,
+          0.6087
         ]
       }
     },
     "XAUUSD": {
-      "n_samples": 333,
-      "n_positives": 62,
-      "n_negatives": 271,
-      "positive_rate": 0.1862,
+      "n_samples": 347,
+      "n_positives": 64,
+      "n_negatives": 283,
+      "positive_rate": 0.1844,
       "threshold": 0.5,
-      "accuracy": 0.7267,
-      "precision": 0.0857,
-      "recall": 0.0484,
-      "f1": 0.0619,
-      "roc_auc": 0.6422,
-      "pr_auc": 0.2324,
-      "brier_score": 0.1634,
+      "accuracy": 0.755,
+      "precision": 0.2,
+      "recall": 0.1094,
+      "f1": 0.1414,
+      "roc_auc": 0.665,
+      "pr_auc": 0.2468,
+      "brier_score": 0.1614,
       "confusion_matrix": [
         [
-          239,
-          32
+          255,
+          28
         ],
         [
-          59,
-          3
+          57,
+          7
         ]
       ],
       "calibration": {
         "prob_true": [
-          0.0427,
-          0.303,
-          0.2348,
+          0.0484,
+          0.2286,
+          0.2982,
           0.0
         ],
         "prob_pred": [
-          0.0968,
-          0.3207,
-          0.4689,
-          0.6185
+          0.0822,
+          0.3191,
+          0.4715,
+          0.6035
         ]
       }
     },
     "XAGUSD": {
-      "n_samples": 434,
-      "n_positives": 119,
-      "n_negatives": 315,
-      "positive_rate": 0.2742,
+      "n_samples": 462,
+      "n_positives": 129,
+      "n_negatives": 333,
+      "positive_rate": 0.2792,
       "threshold": 0.5,
-      "accuracy": 0.7189,
+      "accuracy": 0.7078,
       "precision": 0.3333,
-      "recall": 0.0252,
-      "f1": 0.0469,
-      "roc_auc": 0.6022,
-      "pr_auc": 0.3267,
-      "brier_score": 0.1967,
+      "recall": 0.0465,
+      "f1": 0.0816,
+      "roc_auc": 0.6117,
+      "pr_auc": 0.3287,
+      "brier_score": 0.1974,
       "confusion_matrix": [
         [
-          309,
-          6
+          321,
+          12
         ],
         [
-          116,
-          3
+          123,
+          6
         ]
       ],
       "calibration": {
         "prob_true": [
-          0.125,
-          0.3769,
-          0.2727
+          0.1159,
+          0.3631,
+          0.331
         ],
         "prob_pred": [
-          0.1146,
-          0.3105,
-          0.449
+          0.0909,
+          0.3081,
+          0.4582
         ]
       }
     },
     "BTCUSD": {
-      "n_samples": 445,
-      "n_positives": 89,
-      "n_negatives": 356,
-      "positive_rate": 0.2,
+      "n_samples": 572,
+      "n_positives": 142,
+      "n_negatives": 430,
+      "positive_rate": 0.2483,
       "threshold": 0.5,
-      "accuracy": 0.809,
-      "precision": 0.75,
-      "recall": 0.0674,
-      "f1": 0.1237,
-      "roc_auc": 0.7955,
-      "pr_auc": 0.4561,
-      "brier_score": 0.1384,
+      "accuracy": 0.7587,
+      "precision": 0.6111,
+      "recall": 0.0775,
+      "f1": 0.1375,
+      "roc_auc": 0.7734,
+      "pr_auc": 0.4913,
+      "brier_score": 0.162,
       "confusion_matrix": [
         [
-          354,
-          2
+          423,
+          7
         ],
         [
-          83,
-          6
+          131,
+          11
         ]
       ],
       "calibration": {
         "prob_true": [
-          0.12,
-          0.312,
-          0.6842,
-          1.0
+          0.1445,
+          0.3585,
+          0.5224
         ],
         "prob_pred": [
-          0.0977,
-          0.284,
-          0.4698,
-          0.6006
+          0.0863,
+          0.2936,
+          0.4682
         ]
       }
     },
     "ETHUSD": {
-      "n_samples": 709,
-      "n_positives": 188,
-      "n_negatives": 521,
-      "positive_rate": 0.2652,
+      "n_samples": 587,
+      "n_positives": 140,
+      "n_negatives": 447,
+      "positive_rate": 0.2385,
       "threshold": 0.5,
-      "accuracy": 0.763,
-      "precision": 0.7381,
-      "recall": 0.1649,
-      "f1": 0.2696,
-      "roc_auc": 0.8231,
-      "pr_auc": 0.5817,
-      "brier_score": 0.1533,
+      "accuracy": 0.7666,
+      "precision": 0.5306,
+      "recall": 0.1857,
+      "f1": 0.2751,
+      "roc_auc": 0.7867,
+      "pr_auc": 0.4954,
+      "brier_score": 0.1486,
       "confusion_matrix": [
         [
-          510,
-          11
+          424,
+          23
         ],
         [
-          157,
-          31
+          114,
+          26
         ]
       ],
       "calibration": {
         "prob_true": [
-          0.0769,
-          0.4068,
-          0.5755,
-          1.0
+          0.0468,
+          0.2883,
+          0.488,
+          0.8
         ],
         "prob_pred": [
-          0.1051,
-          0.2957,
-          0.4885,
-          0.6182
+          0.0795,
+          0.2964,
+          0.4798,
+          0.6128
         ]
       }
     }
   },
   "feature_importance": {
-    "level_weight": 0.23601016402244568,
-    "sweep_depth_atr": 0.1574660837650299,
-    "pattern_type_code": 0.07184015214443207,
-    "zone_width_atr": 0.05847379192709923,
-    "direction_code": 0.05749936401844025,
-    "line_age": 0.025982322171330452,
-    "candle_close_location": 0.021694958209991455,
-    "dist_to_pdl_atr": 0.02115405537188053,
-    "touch_count": 0.019929954782128334,
-    "dist_to_pdh_atr": 0.019828373566269875,
-    "dist_to_pwh_atr": 0.019311266019940376,
-    "session_code": 0.018832731992006302,
-    "confluence_score": 0.018584445118904114,
-    "slope_atr": 0.018548758700489998,
-    "relative_volume_sweep": 0.018320798873901367,
-    "dist_to_pwl_atr": 0.018069881945848465,
-    "candle_lower_wick_ratio": 0.017961548641324043,
-    "rolling_volatility": 0.017859850078821182,
-    "dist_to_pmh_atr": 0.017526714131236076,
-    "candle_body_ratio": 0.017448462545871735,
-    "return_20": 0.01736775040626526,
-    "dist_to_pml_atr": 0.016958091408014297,
-    "candle_upper_wick_ratio": 0.016816722229123116,
-    "instrument_code": 0.01591440476477146,
-    "return_5": 0.015802353620529175,
-    "equality_score": 0.015570104122161865,
-    "pattern_height_atr": 0.014876211062073708,
-    "bar_separation": 0.014350648038089275
+    "sweep_depth_atr": 0.19587594270706177,
+    "level_weight": 0.1800740510225296,
+    "pattern_type_code": 0.09658671915531158,
+    "zone_width_atr": 0.04498235508799553,
+    "line_age": 0.026825077831745148,
+    "candle_close_location": 0.024744147434830666,
+    "confluence_score": 0.02469249628484249,
+    "equality_score": 0.02373196743428707,
+    "slope_atr": 0.022950714454054832,
+    "dist_to_pdl_atr": 0.02261442318558693,
+    "dist_to_pdh_atr": 0.02218029648065567,
+    "direction_code": 0.022029999643564224,
+    "dist_to_pwh_atr": 0.021985197439789772,
+    "instrument_code": 0.02051246166229248,
+    "session_code": 0.01965724490582943,
+    "dist_to_pwl_atr": 0.019214380532503128,
+    "rolling_volatility": 0.01910020411014557,
+    "candle_body_ratio": 0.019090116024017334,
+    "return_20": 0.01873031258583069,
+    "dist_to_pml_atr": 0.01868876814842224,
+    "dist_to_pmh_atr": 0.018688511103391647,
+    "touch_count": 0.017475759610533714,
+    "candle_lower_wick_ratio": 0.017445333302021027,
+    "relative_volume_sweep": 0.01735498569905758,
+    "return_5": 0.01732860878109932,
+    "candle_upper_wick_ratio": 0.016704071313142776,
+    "bar_separation": 0.015669260174036026,
+    "pattern_height_atr": 0.015066567808389664
   }
 }

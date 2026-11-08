@@ -1,0 +1,17 @@
+feature_name,lightgbm_importance_gain,lightgbm_importance_normalized,random_forest_importance
+distance_before_touch,1285.0,0.267,0.2211
+sigma_event,1191.0,0.2475,0.1693
+touch_sequence,700.0,0.1455,0.1543
+hour_of_day,651.0,0.1353,0.129
+day_of_week,328.0,0.0682,0.078
+confluence_distance_atr,222.0,0.0461,0.058
+approach_direction,151.0,0.0314,0.026
+is_monthly_open,102.0,0.0212,0.0276
+confluence_flag,80.0,0.0166,0.0255
+session_ny,43.0,0.0089,0.0143
+session_overlap,38.0,0.0079,0.0128
+vol_low,13.0,0.0027,0.0202
+session_london,7.0,0.0015,0.0145
+vol_high,1.0,0.0002,0.0124
+is_gap_through,0.0,0.0,0.0
+session_asia,0.0,0.0,0.037

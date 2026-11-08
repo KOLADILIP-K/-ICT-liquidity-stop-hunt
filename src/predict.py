@@ -21,6 +21,25 @@ class StopHuntPredictor:
         self.features: List[str] = []
         self.metadata: Dict[str, Any] = {}
         self.is_loaded = False
+        self.crypto_models: Dict[str, Any] = {}
+        self.crypto_features: List[str] = [
+            "distance_before_touch",
+            "sigma_event",
+            "approach_direction",
+            "is_gap_through",
+            "confluence_flag",
+            "confluence_distance_atr",
+            "touch_sequence",
+            "hour_of_day",
+            "day_of_week",
+            "session_asia",
+            "session_london",
+            "session_overlap",
+            "session_ny",
+            "vol_low",
+            "vol_high",
+            "is_monthly_open"
+        ]
         self._load_artifacts()
 
     def _load_artifacts(self) -> None:
@@ -59,6 +78,15 @@ class StopHuntPredictor:
                 self.is_loaded = True
             except Exception:
                 pass
+
+        # Load integrated crypto-specific LightGBM models from submissions
+        for inst in ["BTCUSD", "ETHUSD"]:
+            crypto_lgb_path = self.models_dir / f"lightgbm_{inst}.joblib"
+            if crypto_lgb_path.exists():
+                try:
+                    self.crypto_models[inst] = joblib.load(crypto_lgb_path)
+                except Exception as e:
+                    print(f"Notice: Could not load crypto model for {inst}: {e}")
 
     def predict_event(self, feature_row: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -127,3 +155,52 @@ class StopHuntPredictor:
             labels=["LOW", "MEDIUM", "HIGH"]
         )
         return out_df
+
+    def predict_crypto_outcome(
+        self,
+        event_dict: Dict[str, Any],
+        instrument: str = "BTCUSD"
+    ) -> Dict[str, Any]:
+        """
+        Predicts 3-class structural outcome (0: REJECTION, 1: CONTINUATION, 2: SWEEP_RECLAIM)
+        for Weekly/Monthly Open price interaction events using integrated LightGBM models.
+        """
+        inst_clean = "ETHUSD" if "ETH" in str(instrument).upper() else "BTCUSD"
+        model = self.crypto_models.get(inst_clean)
+        
+        if model is None:
+            return {
+                "instrument": inst_clean,
+                "status": "CRYPTO_MODEL_NOT_AVAILABLE",
+                "predicted_outcome": "UNKNOWN",
+                "probabilities": {}
+            }
+
+        vec = []
+        for feat in self.crypto_features:
+            val = event_dict.get(feat, 0.0)
+            vec.append(float(val) if val is not None and not np.isnan(val) else 0.0)
+
+        X = np.array([vec], dtype=np.float32)
+        probs = model.predict_proba(X)[0]
+        class_idx = int(np.argmax(probs))
+        
+        class_names = {
+            0: "REJECTION",
+            1: "CONTINUATION",
+            2: "SWEEP_RECLAIM"
+        }
+
+        return {
+            "instrument": inst_clean,
+            "status": "SUCCESS",
+            "model_type": "LightGBM_Crypto_Dedicated",
+            "predicted_class_id": class_idx,
+            "predicted_outcome": class_names.get(class_idx, "UNKNOWN"),
+            "confidence": round(float(probs[class_idx]), 4),
+            "probabilities": {
+                "rejection": round(float(probs[0]), 4),
+                "continuation": round(float(probs[1]), 4),
+                "sweep_reclaim": round(float(probs[2]), 4)
+            }
+        }

@@ -1,0 +1,167 @@
+{
+  "instrument": "BTCUSD",
+  "split_summary": {
+    "total_labeled_events": 1867,
+    "train_count": 1119,
+    "val_count": 369,
+    "test_count": 373,
+    "purged_count": 6,
+    "train_fraction": 0.5994,
+    "val_fraction": 0.1976,
+    "test_fraction": 0.1998,
+    "purge_embargo_minutes": 240
+  },
+  "feature_set": [
+    "distance_before_touch",
+    "sigma_event",
+    "approach_direction",
+    "is_gap_through",
+    "confluence_flag",
+    "confluence_distance_atr",
+    "touch_sequence",
+    "hour_of_day",
+    "day_of_week",
+    "session_asia",
+    "session_london",
+    "session_overlap",
+    "session_ny",
+    "vol_low",
+    "vol_high",
+    "is_monthly_open"
+  ],
+  "model_performance": [
+    {
+      "model_name": "Majority_Baseline",
+      "test_accuracy": 0.5067,
+      "test_balanced_accuracy": 0.3333,
+      "test_macro_f1": 0.2242,
+      "test_mean_pr_auc": 0.6667,
+      "rejection_precision": 0.0,
+      "rejection_recall": 0.0,
+      "rejection_f1": 0.0,
+      "continuation_precision": 0.0,
+      "continuation_recall": 0.0,
+      "continuation_f1": 0.0,
+      "sweep_reclaim_precision": 0.5067,
+      "sweep_reclaim_recall": 1.0,
+      "sweep_reclaim_f1": 0.6726
+    },
+    {
+      "model_name": "Logistic_Regression",
+      "test_accuracy": 0.378,
+      "test_balanced_accuracy": 0.3879,
+      "test_macro_f1": 0.3485,
+      "test_mean_pr_auc": 0.3975,
+      "rejection_precision": 0.1231,
+      "rejection_recall": 0.3333,
+      "rejection_f1": 0.1798,
+      "continuation_precision": 0.491,
+      "continuation_recall": 0.6029,
+      "continuation_f1": 0.5413,
+      "sweep_reclaim_precision": 0.5658,
+      "sweep_reclaim_recall": 0.2275,
+      "sweep_reclaim_f1": 0.3245
+    },
+    {
+      "model_name": "Random_Forest",
+      "test_accuracy": 0.4102,
+      "test_balanced_accuracy": 0.4022,
+      "test_macro_f1": 0.3786,
+      "test_mean_pr_auc": 0.3822,
+      "rejection_precision": 0.1468,
+      "rejection_recall": 0.3333,
+      "rejection_f1": 0.2038,
+      "continuation_precision": 0.4737,
+      "continuation_recall": 0.5294,
+      "continuation_f1": 0.5,
+      "sweep_reclaim_precision": 0.5804,
+      "sweep_reclaim_recall": 0.3439,
+      "sweep_reclaim_f1": 0.4319
+    },
+    {
+      "model_name": "LightGBM",
+      "test_accuracy": 0.4316,
+      "test_balanced_accuracy": 0.3856,
+      "test_macro_f1": 0.3796,
+      "test_mean_pr_auc": 0.384,
+      "rejection_precision": 0.1719,
+      "rejection_recall": 0.2292,
+      "rejection_f1": 0.1964,
+      "continuation_precision": 0.4194,
+      "continuation_recall": 0.4779,
+      "continuation_f1": 0.4467,
+      "sweep_reclaim_precision": 0.5519,
+      "sweep_reclaim_recall": 0.4497,
+      "sweep_reclaim_f1": 0.4956
+    }
+  ],
+  "feature_importance_top5": [
+    {
+      "feature_name": "distance_before_touch",
+      "lightgbm_importance_gain": 1332.0,
+      "lightgbm_importance_normalized": 0.2554,
+      "random_forest_importance": 0.2461
+    },
+    {
+      "feature_name": "sigma_event",
+      "lightgbm_importance_gain": 1441.0,
+      "lightgbm_importance_normalized": 0.2763,
+      "random_forest_importance": 0.1504
+    },
+    {
+      "feature_name": "approach_direction",
+      "lightgbm_importance_gain": 138.0,
+      "lightgbm_importance_normalized": 0.0265,
+      "random_forest_importance": 0.0348
+    },
+    {
+      "feature_name": "is_gap_through",
+      "lightgbm_importance_gain": 0.0,
+      "lightgbm_importance_normalized": 0.0,
+      "random_forest_importance": 0.0
+    },
+    {
+      "feature_name": "confluence_flag",
+      "lightgbm_importance_gain": 29.0,
+      "lightgbm_importance_normalized": 0.0056,
+      "random_forest_importance": 0.0181
+    }
+  ],
+  "ablation_results": [
+    {
+      "ablation_configuration": "Full_Feature_Set",
+      "feature_count": 16,
+      "test_accuracy": 0.4316,
+      "test_balanced_accuracy": 0.3856,
+      "test_macro_f1": 0.3796
+    },
+    {
+      "ablation_configuration": "No_Confluence",
+      "feature_count": 14,
+      "test_accuracy": 0.4397,
+      "test_balanced_accuracy": 0.3943,
+      "test_macro_f1": 0.3869
+    },
+    {
+      "ablation_configuration": "No_Trading_Sessions",
+      "feature_count": 12,
+      "test_accuracy": 0.437,
+      "test_balanced_accuracy": 0.4002,
+      "test_macro_f1": 0.3904
+    },
+    {
+      "ablation_configuration": "No_Volatility_ATR",
+      "feature_count": 13,
+      "test_accuracy": 0.4102,
+      "test_balanced_accuracy": 0.3842,
+      "test_macro_f1": 0.3672
+    },
+    {
+      "ablation_configuration": "Price_Action_Only",
+      "feature_count": 3,
+      "test_accuracy": 0.4102,
+      "test_balanced_accuracy": 0.385,
+      "test_macro_f1": 0.3718
+    }
+  ]
+}

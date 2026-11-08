@@ -58,61 +58,61 @@
     "behavior_fits_bias": false
   },
   "BTCUSD": {
-    "timestamp": "2026-09-30 23:45:00+00:00",
-    "current_price": 83623.6,
-    "atr": 165.95677376465105,
+    "timestamp": "2026-10-06 23:45:00+00:00",
+    "current_price": 85538.4,
+    "atr": 127.84859705970415,
     "levels_up_to_date": true,
     "all_levels": {
-      "PDH": 84563.99,
-      "PDL": 82900.0,
-      "PWH": 87395.67,
-      "PWL": 81228.15,
-      "PMH": 81478.87,
-      "PML": 62275.0
+      "PDH": 86698.3,
+      "PDL": 84952.8,
+      "PWH": 87203.8,
+      "PWL": 82536.6,
+      "PMH": 87377.9,
+      "PML": 74890.0
     },
     "nearest_above": {
       "level": "PDH",
-      "price": 84563.99,
-      "dist_atr": 5.666475544611385
+      "price": 86698.3,
+      "dist_atr": 9.072449965628843
     },
     "nearest_below": {
       "level": "PDL",
-      "price": 82900.0,
-      "dist_atr": 4.360171528919739
+      "price": 84952.8,
+      "dist_atr": 4.580417880741557
     },
     "active_clusters": [],
-    "active_behavior": "Acceptance",
-    "interacting_level": "PMH",
-    "htf_bias": "Bearish",
-    "behavior_fits_bias": false
+    "active_behavior": "None",
+    "interacting_level": "None",
+    "htf_bias": "Neutral",
+    "behavior_fits_bias": true
   },
   "ETHUSD": {
-    "timestamp": "2026-10-14 23:45:00+00:00",
-    "current_price": 2421.6,
-    "atr": 9.10282254315067,
+    "timestamp": "2026-10-05 23:45:00+00:00",
+    "current_price": 2708.0,
+    "atr": 4.599284074143723,
     "levels_up_to_date": true,
     "all_levels": {
-      "PDH": 2538.52,
-      "PDL": 2489.0,
-      "PWH": 2734.55,
-      "PWL": 2406.11,
-      "PMH": 2807.34,
-      "PML": 2356.41
+      "PDH": 2737.3,
+      "PDL": 2687.3,
+      "PWH": 2774.5,
+      "PWL": 2633.3,
+      "PMH": 2805.2,
+      "PML": 2353.4
     },
     "nearest_above": {
-      "level": "PDL",
-      "price": 2489.0,
-      "dist_atr": 7.4042968189811145
+      "level": "PDH",
+      "price": 2737.3,
+      "dist_atr": 6.3705567057097126
     },
     "nearest_below": {
-      "level": "PWL",
-      "price": 2406.11,
-      "dist_atr": 1.7016699959349508
+      "level": "PDL",
+      "price": 2687.3,
+      "dist_atr": 4.500700471269251
     },
     "active_clusters": [],
-    "active_behavior": "Acceptance",
-    "interacting_level": "PDL",
-    "htf_bias": "Bearish",
+    "active_behavior": "None",
+    "interacting_level": "None",
+    "htf_bias": "Neutral",
     "behavior_fits_bias": true
   }
 }

@@ -94,8 +94,24 @@ def prepare_datasets():
         print(f"Saved {len(df_xag)} Silver candles to {out_xag}.")
 
     # 3. Bitcoin (BTCUSD)
+    source_btc_parquet = Path("d:/KOLADILIP K/Internship/BTCUSD_Submission/BTCUSD_Submission/16_Datasets/btcusd_m1.parquet")
     source_btc = Path("d:/KOLADILIP K/Internship/btc_15m.csv")
-    if source_btc.exists():
+    out_btc = raw_dir / "BTCUSD_15m.csv"
+
+    if source_btc_parquet.exists():
+        print(f"Loading authoritative high-resolution M1 Bitcoin dataset from {source_btc_parquet}...")
+        df_btc_raw = pd.read_parquet(source_btc_parquet)
+        df_btc_raw["datetime"] = pd.to_datetime(df_btc_raw["datetime_utc"], utc=True)
+        df_btc_raw = df_btc_raw.set_index("datetime").sort_index()
+        agg_dict = {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
+        df_btc = df_btc_raw.resample("15min").agg(agg_dict).dropna().reset_index()
+        df_btc = df_btc.rename(columns={"datetime": "timestamp"})
+        for col in ["open", "high", "low", "close", "volume"]:
+            df_btc[col] = pd.to_numeric(df_btc[col], errors="coerce")
+        df_btc = df_btc.dropna().reset_index(drop=True)
+        df_btc[["timestamp", "open", "high", "low", "close", "volume"]].to_csv(out_btc, index=False)
+        print(f"Saved {len(df_btc)} resampled Bitcoin 15m candles (2021-2026) to {out_btc}.")
+    elif source_btc.exists():
         print(f"Loading Bitcoin data from {source_btc}...")
         df_btc = pd.read_csv(source_btc)
         df_btc = df_btc.rename(columns={"datetime": "timestamp"})
@@ -104,16 +120,30 @@ def prepare_datasets():
         for col in ["open", "high", "low", "close", "volume"]:
             df_btc[col] = pd.to_numeric(df_btc[col], errors="coerce")
         df_btc = df_btc.dropna().reset_index(drop=True)
-
-        out_btc = raw_dir / "BTCUSD_15m.csv"
         df_btc[["timestamp", "open", "high", "low", "close", "volume"]].to_csv(out_btc, index=False)
         print(f"Saved {len(df_btc)} Bitcoin candles to {out_btc}.")
     else:
-        print(f"Warning: BTC source file {source_btc} not found.")
+        print(f"Warning: BTC source file not found.")
 
     # 4. Ethereum (ETHUSD)
+    source_eth_parquet = Path("d:/KOLADILIP K/Internship/ETHUSD_Submission/ETHUSD_Submission/16_Datasets/ethusd_m1.parquet")
     source_eth = Path("d:/KOLADILIP K/Internship/eth_15m.csv")
-    if source_eth.exists():
+    out_eth = raw_dir / "ETHUSD_15m.csv"
+
+    if source_eth_parquet.exists():
+        print(f"Loading authoritative high-resolution M1 Ethereum dataset from {source_eth_parquet}...")
+        df_eth_raw = pd.read_parquet(source_eth_parquet)
+        df_eth_raw["datetime"] = pd.to_datetime(df_eth_raw["datetime_utc"], utc=True)
+        df_eth_raw = df_eth_raw.set_index("datetime").sort_index()
+        agg_dict = {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
+        df_eth = df_eth_raw.resample("15min").agg(agg_dict).dropna().reset_index()
+        df_eth = df_eth.rename(columns={"datetime": "timestamp"})
+        for col in ["open", "high", "low", "close", "volume"]:
+            df_eth[col] = pd.to_numeric(df_eth[col], errors="coerce")
+        df_eth = df_eth.dropna().reset_index(drop=True)
+        df_eth[["timestamp", "open", "high", "low", "close", "volume"]].to_csv(out_eth, index=False)
+        print(f"Saved {len(df_eth)} resampled Ethereum 15m candles (2021-2026) to {out_eth}.")
+    elif source_eth.exists():
         print(f"Loading Ethereum data from {source_eth}...")
         df_eth = pd.read_csv(source_eth)
         df_eth = df_eth.rename(columns={"datetime": "timestamp"})
@@ -122,12 +152,10 @@ def prepare_datasets():
         for col in ["open", "high", "low", "close", "volume"]:
             df_eth[col] = pd.to_numeric(df_eth[col], errors="coerce")
         df_eth = df_eth.dropna().reset_index(drop=True)
-
-        out_eth = raw_dir / "ETHUSD_15m.csv"
         df_eth[["timestamp", "open", "high", "low", "close", "volume"]].to_csv(out_eth, index=False)
         print(f"Saved {len(df_eth)} Ethereum candles to {out_eth}.")
     else:
-        print(f"Warning: ETH source file {source_eth} not found.")
+        print(f"Warning: ETH source file not found.")
 
 
 if __name__ == "__main__":
